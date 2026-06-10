@@ -6,7 +6,22 @@ import { z } from "zod";
 
 const router = Router();
 
-const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
+function requireAuth(req: any, res: any): boolean {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  return true;
+}
+
+async function getStudentByUserId(userId: string) {
+  const [profile] = await db
+    .select()
+    .from(studentProfilesTable)
+    .where(eq(studentProfilesTable.userId, userId))
+    .limit(1);
+  return profile ?? null;
+}
 
 const createStudentSchema = z.object({
   displayName: z.string().min(1),
@@ -27,54 +42,51 @@ const updateStudentSchema = z.object({
   musicPreference: z.string().optional(),
 }).partial();
 
-// GET /api/students/profile — get the "current" student profile
-// For demo: use first student (no real auth yet)
+// GET /api/students/profile
 router.get("/students/profile", async (req, res) => {
-  const rows = await db.select().from(studentProfilesTable).limit(1);
-  if (!rows[0]) {
-    return res.status(404).json({ error: "Student profile not found" });
-  }
-  return res.json(rows[0]);
+  if (!requireAuth(req, res)) return;
+  const profile = await getStudentByUserId(req.user!.id);
+  if (!profile) return res.status(404).json({ error: "Student profile not found" });
+  return res.json(profile);
 });
 
 router.post("/students/profile", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const parsed = createStudentSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Invalid input", details: parsed.error.issues });
   }
 
-  const existing = await db
-    .select()
-    .from(studentProfilesTable)
-    .where(eq(studentProfilesTable.userId, DEMO_USER_ID))
-    .limit(1);
+  const existing = await getStudentByUserId(req.user!.id);
+  if (existing) return res.json(existing);
 
-  if (existing[0]) {
-    return res.json(existing[0]);
-  }
-
-  const [profile] = await db.insert(studentProfilesTable).values({ ...parsed.data, userId: DEMO_USER_ID }).returning();
+  const [profile] = await db
+    .insert(studentProfilesTable)
+    .values({ ...parsed.data, userId: req.user!.id })
+    .returning();
   return res.status(201).json(profile);
 });
 
 router.put("/students/profile", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const parsed = updateStudentSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Invalid input", details: parsed.error.issues });
   }
-  const rows = await db.select().from(studentProfilesTable).limit(1);
-  if (!rows[0]) return res.status(404).json({ error: "Not found" });
+  const profile = await getStudentByUserId(req.user!.id);
+  if (!profile) return res.status(404).json({ error: "Not found" });
   const [updated] = await db
     .update(studentProfilesTable)
     .set(parsed.data)
-    .where(eq(studentProfilesTable.id, rows[0].id))
+    .where(eq(studentProfilesTable.id, profile.id))
     .returning();
   return res.json(updated);
 });
 
 // GET /api/students/dashboard
 router.get("/students/dashboard", async (req, res) => {
-  const student = (await db.select().from(studentProfilesTable).limit(1))[0];
+  if (!requireAuth(req, res)) return;
+  const student = await getStudentByUserId(req.user!.id);
   if (!student) {
     return res.json({
       profile: null,
@@ -86,7 +98,7 @@ router.get("/students/dashboard", async (req, res) => {
       domainProgress: [],
     });
   }
-  // Build dashboard from DB data
+
   const { skillMasteryTable, elaSkillsTable } = await import("@workspace/db/schema");
   const masteryRows = await db
     .select()
@@ -94,7 +106,11 @@ router.get("/students/dashboard", async (req, res) => {
     .where(eq(skillMasteryTable.studentId, student.id))
     .limit(50);
 
-  const skills = await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.active, true)).limit(200);
+  const skills = await db
+    .select()
+    .from(elaSkillsTable)
+    .where(eq(elaSkillsTable.active, true))
+    .limit(200);
 
   const domains = ["RL", "RI", "RF", "W", "SL", "L"];
   const domainLabels: Record<string, string> = {
@@ -140,7 +156,8 @@ router.get("/students/dashboard", async (req, res) => {
 
 // GET /api/students/progress
 router.get("/students/progress", async (req, res) => {
-  const student = (await db.select().from(studentProfilesTable).limit(1))[0];
+  if (!requireAuth(req, res)) return;
+  const student = await getStudentByUserId(req.user!.id);
   return res.json({
     gradeProgress: {
       enrolledGrade: student?.grade ?? "—",
@@ -154,8 +171,9 @@ router.get("/students/progress", async (req, res) => {
 
 // GET /api/students/analytics
 router.get("/students/analytics", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const { skillMasteryTable } = await import("@workspace/db/schema");
-  const student = (await db.select().from(studentProfilesTable).limit(1))[0];
+  const student = await getStudentByUserId(req.user!.id);
   const masteryRows = student
     ? await db.select().from(skillMasteryTable).where(eq(skillMasteryTable.studentId, student.id)).limit(200)
     : [];

@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 
 export const studentProfilesTable = pgTable("student_profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().unique(),
+  userId: text("user_id").notNull().unique(),
   displayName: text("display_name").notNull(),
   grade: text("grade").notNull(),
   age: integer("age"),

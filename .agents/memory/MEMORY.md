@@ -1,0 +1,3 @@
+- [Replit Auth OIDC setup](replit-auth-oidc.md) — users.id is TEXT (Replit OIDC sub), sessions table in DB, openid-client + ReplitConnectors SDK patterns
+- [ElevenLabs TTS connector](elevenlabs-tts.md) — use ReplitConnectors class with connector_names:"elevenlabs" to get api_key, then fetch directly
+- [Vite workspace lib resolution](vite-workspace-libs.md) — workspace libs need explicit alias + fs.allow for lib directory in vite.config.ts

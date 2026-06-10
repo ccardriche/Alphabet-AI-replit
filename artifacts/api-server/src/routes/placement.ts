@@ -6,7 +6,7 @@ import {
   studentProfilesTable,
   skillMasteryTable,
 } from "@workspace/db/schema";
-import { eq, and, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 
 const router = Router();
@@ -16,13 +16,31 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY ?? "sk-placeholder",
 });
 
+function requireAuth(req: any, res: any): boolean {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  return true;
+}
+
+async function getStudentByUserId(userId: string) {
+  const [profile] = await db
+    .select()
+    .from(studentProfilesTable)
+    .where(eq(studentProfilesTable.userId, userId))
+    .limit(1);
+  return profile ?? null;
+}
+
 // POST /api/placement/start
 router.post("/placement/start", async (req, res) => {
-  const { studentId } = req.body as { studentId: string };
-  if (!studentId) return res.status(400).json({ error: "studentId required" });
+  if (!requireAuth(req, res)) return;
+  const student = await getStudentByUserId(req.user!.id);
+  if (!student) return res.status(404).json({ error: "Student profile not found. Complete onboarding first." });
 
   const [session] = await db.insert(placementSessionsTable).values({
-    studentId,
+    studentId: student.id,
     status: "in_progress",
     theta: 0,
     thetaSe: 999,
@@ -34,6 +52,7 @@ router.post("/placement/start", async (req, res) => {
 
 // GET /api/placement/:sessionId/next
 router.get("/placement/:sessionId/next", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
   const [session] = await db.select().from(placementSessionsTable).where(eq(placementSessionsTable.id, sessionId)).limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
@@ -42,14 +61,12 @@ router.get("/placement/:sessionId/next", async (req, res) => {
     return res.status(400).json({ error: "Session already completed" });
   }
 
-  // Pick a skill near the current theta (difficulty ≈ theta)
   const answers = (session.answers as any[]) ?? [];
   const usedCodes = answers.map((a: any) => a.skillCode).filter(Boolean);
 
   const skills = await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.active, true)).limit(200);
   const available = skills.filter((s) => !usedCodes.includes(s.skillCode));
 
-  // Sort by difficulty closest to theta
   available.sort((a, b) => Math.abs(a.difficulty - session.theta) - Math.abs(b.difficulty - session.theta));
   const targetSkill = available[0];
 
@@ -57,8 +74,7 @@ router.get("/placement/:sessionId/next", async (req, res) => {
     return res.status(400).json({ error: "No more skills available" });
   }
 
-  // Generate question via OpenAI
-  const student = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.id, session.studentId)).limit(1))[0];
+  const student = await getStudentByUserId(req.user!.id);
 
   let question;
   try {
@@ -72,8 +88,7 @@ router.get("/placement/:sessionId/next", async (req, res) => {
       culturalContext: student?.culturalContext ?? [],
       activityType: "multiple_choice",
     });
-  } catch (e) {
-    // Fallback mock question
+  } catch {
     question = makeMockQuestion(targetSkill);
   }
 
@@ -82,6 +97,7 @@ router.get("/placement/:sessionId/next", async (req, res) => {
 
 // POST /api/placement/:sessionId/answer
 router.post("/placement/:sessionId/answer", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
   const { questionId, selectedOptionId, skillCode, correct, timeSpentSeconds } = req.body;
 
@@ -93,30 +109,22 @@ router.post("/placement/:sessionId/answer", async (req, res) => {
   const a = skill?.discrimination ?? 1.0;
   const c = skill?.guessing ?? 0.25;
 
-  // 3-PL IRT theta update (simplified EM)
   let theta = session.theta;
   const p = c + (1 - c) / (1 + Math.exp(-a * (theta - b)));
   const w = p * (1 - p);
   const newFisherInfo = session.fisherInfo + a * a * w;
   const gradient = correct ? (1 - p) : -p;
   theta = theta + (a * gradient) / Math.max(0.1, newFisherInfo);
-  theta = Math.max(-4, Math.min(4, theta)); // clamp
+  theta = Math.max(-4, Math.min(4, theta));
 
   const newSe = newFisherInfo > 0 ? 1 / Math.sqrt(newFisherInfo) : 999;
 
   const answers = [...((session.answers as any[]) ?? []), { questionId, skillCode, correct, timeSpentSeconds }];
   const questionCount = session.questionCount + 1;
 
-  // Stop conditions: 20 questions OR SE < 0.35
   const complete = questionCount >= 20 || newSe < 0.35;
 
-  let updates: any = {
-    theta,
-    thetaSe: newSe,
-    fisherInfo: newFisherInfo,
-    questionCount,
-    answers,
-  };
+  let updates: any = { theta, thetaSe: newSe, fisherInfo: newFisherInfo, questionCount, answers };
 
   if (complete) {
     const diagnosedGrade = thetaToGrade(theta);
@@ -144,6 +152,7 @@ router.post("/placement/:sessionId/answer", async (req, res) => {
 
 // GET /api/placement/:sessionId/result
 router.get("/placement/:sessionId/result", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const [session] = await db.select().from(placementSessionsTable).where(eq(placementSessionsTable.id, req.params.sessionId)).limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
   return res.json(session);

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { lessonSessionsTable, elaSkillsTable } from "@workspace/db/schema";
+import { lessonSessionsTable, elaSkillsTable, usersTable } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 
 const router = Router();
@@ -10,14 +11,21 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY ?? "sk-placeholder",
 });
 
+function requireAuth(req: any, res: any): boolean {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  return true;
+}
+
 // POST /api/llm/lesson
 router.post("/llm/lesson", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const { text, title, gradeLevel, domain, standardCode } = req.body;
   if (!text || !gradeLevel || !domain) {
     return res.status(400).json({ error: "text, gradeLevel, and domain are required" });
   }
-
-  const demoTeacherId = "00000000-0000-0000-0000-000000000002";
 
   let framingLesson = "";
   let discussionQuestions: string[] = [];
@@ -56,8 +64,7 @@ Return JSON:
     discussionQuestions = parsed.discussionQuestions ?? [];
     writingPrompts = parsed.writingPrompts ?? [];
     vocabularyList = parsed.vocabularyList ?? [];
-  } catch (err) {
-    // Fallback content
+  } catch {
     framingLesson = `This ${gradeLevel} ${domain} lesson explores the provided text through critical reading and analytical writing.`;
     discussionQuestions = [
       "What is the main idea of this text?",
@@ -75,7 +82,7 @@ Return JSON:
   }
 
   const [session] = await db.insert(lessonSessionsTable).values({
-    teacherId: demoTeacherId,
+    teacherId: req.user!.id,
     title: title ?? "Untitled Lesson",
     gradeLevel,
     domain,
@@ -93,14 +100,14 @@ Return JSON:
 
 // GET /api/lessons
 router.get("/lessons", async (req, res) => {
-  const demoTeacherId = "00000000-0000-0000-0000-000000000002";
-  const lessons = await db.select().from(lessonSessionsTable)
-    .limit(20);
+  if (!requireAuth(req, res)) return;
+  const lessons = await db.select().from(lessonSessionsTable).limit(20);
   return res.json(lessons);
 });
 
 // POST /api/llm/question
 router.post("/llm/question", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const { skillCode, gradeLevel, activityType, interests, culturalContext, homeLanguage, theta } = req.body;
   if (!skillCode || !gradeLevel || !activityType) {
     return res.status(400).json({ error: "skillCode, gradeLevel, and activityType are required" });
@@ -162,6 +169,7 @@ router.post("/llm/question", async (req, res) => {
 
 // POST /api/llm/exercise
 router.post("/llm/exercise", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const { skillCode, gradeLevel, count = 5, interests } = req.body;
   if (!skillCode || !gradeLevel) return res.status(400).json({ error: "skillCode and gradeLevel required" });
 
@@ -215,13 +223,23 @@ router.post("/tts", async (req, res) => {
   const { text, voiceId } = req.body;
   if (!text) return res.status(400).json({ error: "text required" });
 
-  // ElevenLabs TTS via connector proxy
   try {
-    const { default: connectors } = await import("@replit/connectors-sdk");
+    const { ReplitConnectors } = await import("@replit/connectors-sdk");
+    const sdk = new ReplitConnectors();
+    const conns = await sdk.listConnections({ connector_names: "elevenlabs" });
+    const settings = conns?.[0]?.settings as Record<string, string> | undefined;
+    const apiKey = settings?.api_key;
+    if (!apiKey) {
+      return res.status(503).json({ error: "ElevenLabs not configured" });
+    }
+
     const voice = voiceId ?? "21m00Tcm4TlvDq8ikWAM"; // Rachel
-    const ttsRes = await connectors.proxy("elevenlabs", `/v1/text-to-speech/${voice}`, {
+    const ttsRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "xi-api-key": apiKey,
+      },
       body: JSON.stringify({
         text,
         model_id: "eleven_multilingual_v2",
@@ -229,34 +247,46 @@ router.post("/tts", async (req, res) => {
       }),
     });
 
+    if (!ttsRes.ok) {
+      const errText = await ttsRes.text();
+      return res.status(502).json({ error: "TTS upstream error", details: errText });
+    }
+
     const audioBuffer = await ttsRes.arrayBuffer();
     res.set("Content-Type", "audio/mpeg");
     return res.send(Buffer.from(audioBuffer));
   } catch (err) {
+    req.log.error({ err }, "TTS error");
     return res.status(500).json({ error: "TTS failed", details: String(err) });
   }
 });
 
-// GET /api/me
+// GET /api/me — current user profile
 router.get("/me", async (req, res) => {
-  return res.json({
-    id: "00000000-0000-0000-0000-000000000001",
-    email: "demo@alphabetai.com",
-    displayName: "Demo User",
-    role: "student",
-    createdAt: new Date().toISOString(),
-  });
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, req.user!.id))
+    .limit(1);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  return res.json(user);
 });
 
-// PUT /api/me
+// PUT /api/me — update display name / role
 router.put("/me", async (req, res) => {
-  return res.json({
-    id: "00000000-0000-0000-0000-000000000001",
-    email: "demo@alphabetai.com",
-    displayName: req.body.displayName ?? "Demo User",
-    role: req.body.role ?? "student",
-    createdAt: new Date().toISOString(),
-  });
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const { displayName, role } = req.body;
+  const [updated] = await db
+    .update(usersTable)
+    .set({ displayName, role, updatedAt: new Date() })
+    .where(eq(usersTable.id, req.user!.id))
+    .returning();
+  return res.json(updated);
 });
 
 export default router;

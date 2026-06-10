@@ -1,16 +1,10 @@
-import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { GraduationCap, BookOpen, Users, ArrowRight, Star, TrendingUp, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { setRole } from "@/lib/role";
+import { useAuth } from "@workspace/replit-auth-web";
 
 export default function Landing() {
-  const [, setLocation] = useLocation();
-
-  function handleRole(role: "student" | "teacher") {
-    setRole(role);
-    setLocation(role === "student" ? "/dashboard" : "/teacher");
-  }
+  const { login } = useAuth();
 
   const features = [
     { icon: Brain, label: "Adaptive IRT Engine", desc: "Questions calibrate to each student's level in real time" },
@@ -67,7 +61,7 @@ export default function Landing() {
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold px-8 gap-2"
-                onClick={() => handleRole("student")}
+                onClick={() => login()}
                 data-testid="btn-student-login"
               >
                 <BookOpen className="w-4 h-4" />
@@ -78,7 +72,7 @@ export default function Landing() {
                 size="lg"
                 variant="outline"
                 className="border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white font-semibold px-8 gap-2"
-                onClick={() => handleRole("teacher")}
+                onClick={() => login()}
                 data-testid="btn-teacher-login"
               >
                 <Users className="w-4 h-4" />

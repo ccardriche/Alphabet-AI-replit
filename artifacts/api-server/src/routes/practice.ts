@@ -6,20 +6,40 @@ import {
   skillMasteryTable,
   elaSkillsTable,
 } from "@workspace/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { generateQuestion, makeMockQuestion } from "./placement";
 
 const router = Router();
 
 const ACTIVITY_TYPES = ["listen_repeat", "see_tap", "say_it", "write_it", "read_it"];
 
+function requireAuth(req: any, res: any): boolean {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  return true;
+}
+
+async function getStudentByUserId(userId: string) {
+  const [profile] = await db
+    .select()
+    .from(studentProfilesTable)
+    .where(eq(studentProfilesTable.userId, userId))
+    .limit(1);
+  return profile ?? null;
+}
+
 // POST /api/practice/start
 router.post("/practice/start", async (req, res) => {
-  const { studentId, focusDomain } = req.body as { studentId: string; focusDomain?: string };
-  if (!studentId) return res.status(400).json({ error: "studentId required" });
+  if (!requireAuth(req, res)) return;
+  const student = await getStudentByUserId(req.user!.id);
+  if (!student) return res.status(404).json({ error: "Student profile not found. Complete onboarding first." });
+
+  const { focusDomain } = req.body as { focusDomain?: string };
 
   const [session] = await db.insert(practiceSessionsTable).values({
-    studentId,
+    studentId: student.id,
     status: "in_progress",
     focusDomain: focusDomain ?? null,
   }).returning();
@@ -29,19 +49,17 @@ router.post("/practice/start", async (req, res) => {
 
 // GET /api/practice/:sessionId/next
 router.get("/practice/:sessionId/next", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
   const [session] = await db.select().from(practiceSessionsTable).where(eq(practiceSessionsTable.id, sessionId)).limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
 
-  const student = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.id, session.studentId)).limit(1))[0];
+  const student = await getStudentByUserId(req.user!.id);
 
-  // Find the weakest skill (lowest smartScore, not mastered) to practice
   const masteryRows = await db
     .select()
     .from(skillMasteryTable)
-    .where(and(
-      eq(skillMasteryTable.studentId, session.studentId),
-    ))
+    .where(eq(skillMasteryTable.studentId, session.studentId))
     .limit(200);
 
   const skills = await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.active, true)).limit(200);
@@ -52,13 +70,11 @@ router.get("/practice/:sessionId/next", async (req, res) => {
     .sort((a, b) => a.smartScore - b.smartScore);
 
   if (practicing.length > 0) {
-    // Prioritize "practicing" and "approaching" states
     const target = practicing[0];
     targetSkill = skills.find((s) => s.skillCode === target.skillCode);
   }
 
   if (!targetSkill) {
-    // Pick from available skills not yet started
     const practicedCodes = new Set(masteryRows.map((m) => m.skillCode));
     const unstartedSkills = skills.filter((s) => !practicedCodes.has(s.skillCode));
     targetSkill = unstartedSkills[Math.floor(Math.random() * unstartedSkills.length)] ?? skills[0];
@@ -99,13 +115,13 @@ router.get("/practice/:sessionId/next", async (req, res) => {
 
 // POST /api/practice/:sessionId/answer
 router.post("/practice/:sessionId/answer", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
   const { questionId, selectedOptionId, correct, skillCode, timeSpentSeconds } = req.body;
 
   const [session] = await db.select().from(practiceSessionsTable).where(eq(practiceSessionsTable.id, sessionId)).limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
 
-  // Update mastery for the skill
   const existingMastery = (await db.select().from(skillMasteryTable).where(
     and(eq(skillMasteryTable.studentId, session.studentId), eq(skillMasteryTable.skillCode, skillCode))
   ).limit(1))[0];
@@ -158,7 +174,7 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
 
   // Update student XP
   await db.update(studentProfilesTable).set({
-    totalXp: session.studentId ? undefined : undefined, // Will handle via raw SQL or computed
+    totalXp: sql`${studentProfilesTable.totalXp} + ${xpEarned}`,
   }).where(eq(studentProfilesTable.id, session.studentId));
 
   return res.json({ ...updated, xpEarned, correct });
@@ -166,6 +182,7 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
 
 // POST /api/practice/:sessionId/complete
 router.post("/practice/:sessionId/complete", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
   const { totalQuestions, correctAnswers, durationMin } = req.body;
 
@@ -178,12 +195,26 @@ router.post("/practice/:sessionId/complete", async (req, res) => {
   }).where(eq(practiceSessionsTable.id, sessionId)).returning();
 
   if (!updated) return res.status(404).json({ error: "Session not found" });
+
+  // Update streak on session complete
+  const student = await getStudentByUserId(req.user!.id);
+  if (student) {
+    const now = new Date();
+    const lastPracticed = student.updatedAt;
+    const hoursSince = (now.getTime() - lastPracticed.getTime()) / (1000 * 60 * 60);
+    const newStreak = hoursSince < 48 ? student.currentStreak + 1 : 1;
+    await db.update(studentProfilesTable).set({
+      currentStreak: newStreak,
+    }).where(eq(studentProfilesTable.id, student.id));
+  }
+
   return res.json(updated);
 });
 
 // GET /api/practice/history
 router.get("/practice/history", async (req, res) => {
-  const student = (await db.select().from(studentProfilesTable).limit(1))[0];
+  if (!requireAuth(req, res)) return;
+  const student = await getStudentByUserId(req.user!.id);
   if (!student) return res.json([]);
 
   const sessions = await db
@@ -200,19 +231,18 @@ router.get("/practice/history", async (req, res) => {
 
 // GET /api/students/intervention
 router.get("/students/intervention", async (req, res) => {
-  const student = (await db.select().from(studentProfilesTable).limit(1))[0];
-  if (!student) return res.status(404).json({ error: "No student found" });
+  if (!requireAuth(req, res)) return;
+  const student = await getStudentByUserId(req.user!.id);
+  if (!student) return res.status(404).json({ error: "Student profile not found" });
 
   const masteryRows = await db.select().from(skillMasteryTable).where(eq(skillMasteryTable.studentId, student.id)).limit(200);
   const allSkills = await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.active, true)).limit(200);
 
-  // Estimate grade gap from diagnosed vs enrolled
   const gradeOrder = ["K","1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th","11th","12th"];
   const enrolledIdx = gradeOrder.indexOf(student.grade ?? "5th");
   const diagnosedIdx = gradeOrder.indexOf(student.diagnosedGradeLevel ?? student.grade ?? "5th");
   const gradeGap = Math.max(0, enrolledIdx - diagnosedIdx);
 
-  // Weak skills per phase
   const weakSkills = masteryRows
     .filter((m) => m.masteryLevel !== "mastered")
     .sort((a, b) => a.smartScore - b.smartScore);
@@ -258,12 +288,7 @@ router.get("/students/intervention", async (req, res) => {
 
   const currentPhase = phases.find((p) => p.skills.length > 0)?.phaseNumber ?? 1;
 
-  return res.json({
-    studentId: student.id,
-    gradeGap,
-    currentPhase,
-    phases,
-  });
+  return res.json({ studentId: student.id, gradeGap, currentPhase, phases });
 });
 
 export default router;

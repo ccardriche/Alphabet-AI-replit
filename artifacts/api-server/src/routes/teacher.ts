@@ -12,23 +12,35 @@ import crypto from "crypto";
 
 const router = Router();
 
+function requireAuth(req: any, res: any): boolean {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  return true;
+}
+
 // GET /api/teacher/classes
 router.get("/teacher/classes", async (req, res) => {
-  const demoTeacherId = "00000000-0000-0000-0000-000000000002";
-  const classes = await db.select().from(teacherClassesTable).where(eq(teacherClassesTable.teacherId, demoTeacherId)).limit(20);
+  if (!requireAuth(req, res)) return;
+  const classes = await db
+    .select()
+    .from(teacherClassesTable)
+    .where(eq(teacherClassesTable.teacherId, req.user!.id))
+    .limit(20);
   return res.json(classes);
 });
 
 // POST /api/teacher/classes
 router.post("/teacher/classes", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const { className, gradeLevel, schoolName } = req.body;
   if (!className || !gradeLevel) return res.status(400).json({ error: "className and gradeLevel required" });
 
-  const demoTeacherId = "00000000-0000-0000-0000-000000000002";
   const classCode = crypto.randomBytes(3).toString("hex").toUpperCase();
 
   const [cls] = await db.insert(teacherClassesTable).values({
-    teacherId: demoTeacherId,
+    teacherId: req.user!.id,
     className,
     gradeLevel,
     schoolName: schoolName ?? null,
@@ -40,13 +52,22 @@ router.post("/teacher/classes", async (req, res) => {
 
 // GET /api/teacher/classes/:classId
 router.get("/teacher/classes/:classId", async (req, res) => {
-  const [cls] = await db.select().from(teacherClassesTable).where(eq(teacherClassesTable.id, req.params.classId)).limit(1);
+  if (!requireAuth(req, res)) return;
+  const [cls] = await db
+    .select()
+    .from(teacherClassesTable)
+    .where(and(
+      eq(teacherClassesTable.id, req.params.classId),
+      eq(teacherClassesTable.teacherId, req.user!.id),
+    ))
+    .limit(1);
   if (!cls) return res.status(404).json({ error: "Class not found" });
   return res.json(cls);
 });
 
 // GET /api/teacher/classes/:classId/students
 router.get("/teacher/classes/:classId/students", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const students = await db.select().from(studentProfilesTable).limit(50);
 
   const result = await Promise.all(students.map(async (s) => {
@@ -81,6 +102,7 @@ router.get("/teacher/classes/:classId/students", async (req, res) => {
 
 // GET /api/teacher/classes/:classId/heatmap
 router.get("/teacher/classes/:classId/heatmap", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const domains = ["RL", "RI", "RF", "W", "SL", "L"];
   const students = await db.select().from(studentProfilesTable).limit(50);
 
@@ -98,6 +120,7 @@ router.get("/teacher/classes/:classId/heatmap", async (req, res) => {
 
 // GET /api/teacher/dashboard
 router.get("/teacher/dashboard", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const students = await db.select().from(studentProfilesTable).limit(200);
   const allMastery = await Promise.all(students.map((s) =>
     db.select().from(skillMasteryTable).where(eq(skillMasteryTable.studentId, s.id)).limit(200)
@@ -112,9 +135,8 @@ router.get("/teacher/dashboard", async (req, res) => {
     if (avg >= 70) onTrack++; else intervention++;
   }
 
-  const demoTeacherId = "00000000-0000-0000-0000-000000000002";
   const alerts = await db.select().from(teacherAlertsTable).where(
-    and(eq(teacherAlertsTable.teacherId, demoTeacherId), eq(teacherAlertsTable.resolved, false))
+    and(eq(teacherAlertsTable.teacherId, req.user!.id), eq(teacherAlertsTable.resolved, false))
   ).limit(10);
 
   const totalMasteries = allMastery.flat();
@@ -134,15 +156,16 @@ router.get("/teacher/dashboard", async (req, res) => {
 
 // GET /api/teacher/alerts
 router.get("/teacher/alerts", async (req, res) => {
-  const demoTeacherId = "00000000-0000-0000-0000-000000000002";
+  if (!requireAuth(req, res)) return;
   const alerts = await db.select().from(teacherAlertsTable).where(
-    eq(teacherAlertsTable.teacherId, demoTeacherId)
+    eq(teacherAlertsTable.teacherId, req.user!.id)
   ).limit(20);
   return res.json(alerts);
 });
 
 // GET /api/teacher/analytics/:classId
 router.get("/teacher/analytics/:classId", async (req, res) => {
+  if (!requireAuth(req, res)) return;
   const students = await db.select().from(studentProfilesTable).limit(50);
   return res.json({
     classId: req.params.classId,
