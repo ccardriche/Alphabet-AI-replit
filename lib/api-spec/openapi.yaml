@@ -3,20 +3,42 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Alphabet AI - Adaptive K-12 ELA Mastery Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication and user profile
+  - name: students
+    description: Student profile operations
+  - name: skills
+    description: ELA skill catalog
+  - name: mastery
+    description: Skill mastery tracking
+  - name: placement
+    description: Adaptive placement assessment
+  - name: practice
+    description: Daily adaptive practice sessions
+  - name: teacher
+    description: Teacher dashboard and class management
+  - name: lessons
+    description: Lesson sessions and content
+  - name: tts
+    description: Text-to-speech
+  - name: llm
+    description: AI content generation
+  - name: analytics
+    description: Analytics and progress data
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +46,1651 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── AUTH / PROFILE ─────────────────────────────────────────────────────────
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthenticated
+
+  /auth/profile:
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  # ── STUDENT PROFILE ────────────────────────────────────────────────────────
+  /students/profile:
+    get:
+      operationId: getStudentProfile
+      tags: [students]
+      summary: Get student profile for current user
+      responses:
+        "200":
+          description: Student profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+        "404":
+          description: Not found
+    post:
+      operationId: createStudentProfile
+      tags: [students]
+      summary: Create or upsert student profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentProfileInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+    patch:
+      operationId: updateStudentProfile
+      tags: [students]
+      summary: Update student profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentProfileUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+
+  /students/dashboard:
+    get:
+      operationId: getStudentDashboard
+      tags: [students]
+      summary: Get student dashboard summary
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentDashboard"
+
+  /students/progress:
+    get:
+      operationId: getStudentProgress
+      tags: [students]
+      summary: Get student progress over time
+      responses:
+        "200":
+          description: Progress data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProgress"
+
+  # ── ELA SKILL CATALOG ──────────────────────────────────────────────────────
+  /skills:
+    get:
+      operationId: listSkills
+      tags: [skills]
+      summary: List ELA skills with optional filters
+      parameters:
+        - in: query
+          name: gradeLevel
+          schema:
+            type: string
+        - in: query
+          name: domain
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: active
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of skills
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ElaSkill"
+
+  /skills/{skillCode}:
+    get:
+      operationId: getSkill
+      tags: [skills]
+      summary: Get a single skill by code
+      parameters:
+        - in: path
+          name: skillCode
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Skill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElaSkill"
+        "404":
+          description: Not found
+
+  /skills/tree:
+    get:
+      operationId: getSkillTree
+      tags: [skills]
+      summary: Get skills grouped by grade and domain for skill tree view
+      parameters:
+        - in: query
+          name: gradeLevel
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Skill tree
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillTree"
+
+  # ── MASTERY ────────────────────────────────────────────────────────────────
+  /mastery:
+    get:
+      operationId: listMastery
+      tags: [mastery]
+      summary: List skill mastery records for current student
+      parameters:
+        - in: query
+          name: domain
+          schema:
+            type: string
+        - in: query
+          name: masteryLevel
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Mastery records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SkillMastery"
+
+  /mastery/{skillCode}:
+    get:
+      operationId: getMastery
+      tags: [mastery]
+      summary: Get mastery for a specific skill
+      parameters:
+        - in: path
+          name: skillCode
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Mastery record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillMastery"
+        "404":
+          description: Not found
+
+  /mastery/{skillCode}/record:
+    post:
+      operationId: recordAnswer
+      tags: [mastery]
+      summary: Record a practice answer and update mastery
+      parameters:
+        - in: path
+          name: skillCode
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnswerRecord"
+      responses:
+        "200":
+          description: Updated mastery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillMastery"
+
+  /mastery/summary:
+    get:
+      operationId: getMasterySummary
+      tags: [mastery]
+      summary: Get mastery summary by domain
+      responses:
+        "200":
+          description: Mastery summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MasterySummary"
+
+  # ── ADAPTIVE PLACEMENT ─────────────────────────────────────────────────────
+  /placement/start:
+    post:
+      operationId: startPlacement
+      tags: [placement]
+      summary: Start a new adaptive placement session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlacementStartInput"
+      responses:
+        "201":
+          description: New placement session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlacementSession"
+
+  /placement/{sessionId}/question:
+    get:
+      operationId: getNextPlacementQuestion
+      tags: [placement]
+      summary: Get the next adaptive question for placement
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Next question
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdaptiveQuestion"
+        "204":
+          description: Assessment complete
+
+  /placement/{sessionId}/answer:
+    post:
+      operationId: submitPlacementAnswer
+      tags: [placement]
+      summary: Submit answer for placement question
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlacementAnswer"
+      responses:
+        "200":
+          description: Answer result with updated theta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlacementAnswerResult"
+
+  /placement/{sessionId}/result:
+    get:
+      operationId: getPlacementResult
+      tags: [placement]
+      summary: Get placement result after completion
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Placement result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlacementResult"
+
+  # ── DAILY PRACTICE ─────────────────────────────────────────────────────────
+  /practice/session:
+    post:
+      operationId: startPracticeSession
+      tags: [practice]
+      summary: Start a new daily practice session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PracticeSessionInput"
+      responses:
+        "201":
+          description: New practice session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeSession"
+
+  /practice/session/{sessionId}/activity:
+    get:
+      operationId: getNextActivity
+      tags: [practice]
+      summary: Get the next activity in practice session
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Next activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeActivity"
+        "204":
+          description: Session complete
+
+  /practice/session/{sessionId}/submit:
+    post:
+      operationId: submitActivityAnswer
+      tags: [practice]
+      summary: Submit answer for practice activity
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityAnswer"
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityResult"
+
+  /practice/session/{sessionId}/complete:
+    post:
+      operationId: completePracticeSession
+      tags: [practice]
+      summary: Mark practice session as complete
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteSessionInput"
+      responses:
+        "200":
+          description: Completed session summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeSession"
+
+  /practice/history:
+    get:
+      operationId: getPracticeHistory
+      tags: [practice]
+      summary: Get recent practice session history
+      responses:
+        "200":
+          description: Practice history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PracticeSession"
+
+  # ── INTERVENTION ───────────────────────────────────────────────────────────
+  /intervention/pathway:
+    get:
+      operationId: getInterventionPathway
+      tags: [students]
+      summary: Get intervention pathway for current student
+      responses:
+        "200":
+          description: Intervention pathway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InterventionPathway"
+
+  # ── TEACHER ────────────────────────────────────────────────────────────────
+  /teacher/classes:
+    get:
+      operationId: listTeacherClasses
+      tags: [teacher]
+      summary: List classes for current teacher
+      responses:
+        "200":
+          description: Classes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeacherClass"
+    post:
+      operationId: createTeacherClass
+      tags: [teacher]
+      summary: Create a new class
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeacherClassInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherClass"
+
+  /teacher/classes/{classId}:
+    get:
+      operationId: getTeacherClass
+      tags: [teacher]
+      summary: Get class details
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Class
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherClass"
+
+  /teacher/classes/{classId}/students:
+    get:
+      operationId: listClassStudents
+      tags: [teacher]
+      summary: List students enrolled in a class
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Students with mastery summary
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentRosterEntry"
+
+  /teacher/classes/{classId}/heatmap:
+    get:
+      operationId: getClassHeatmap
+      tags: [teacher]
+      summary: Get standards mastery heatmap for a class
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Heatmap data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassHeatmap"
+
+  /teacher/dashboard:
+    get:
+      operationId: getTeacherDashboard
+      tags: [teacher]
+      summary: Get teacher dashboard summary
+      responses:
+        "200":
+          description: Teacher dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherDashboard"
+
+  /teacher/alerts:
+    get:
+      operationId: listTeacherAlerts
+      tags: [teacher]
+      summary: List intervention alerts for teacher
+      responses:
+        "200":
+          description: Alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeacherAlert"
+
+  # ── LESSONS / CONTENT ──────────────────────────────────────────────────────
+  /lessons:
+    get:
+      operationId: listLessons
+      tags: [lessons]
+      summary: List lesson sessions
+      responses:
+        "200":
+          description: Lessons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LessonSession"
+
+  /lessons/generate:
+    post:
+      operationId: generateLesson
+      tags: [lessons]
+      summary: Generate a lesson from uploaded book content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LessonGenerateInput"
+      responses:
+        "201":
+          description: Generated lesson
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonSession"
+
+  # ── TTS ────────────────────────────────────────────────────────────────────
+  /tts:
+    post:
+      operationId: textToSpeech
+      tags: [tts]
+      summary: Convert text to speech audio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TtsInput"
+      responses:
+        "200":
+          description: Audio data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TtsResult"
+
+  # ── AI CONTENT GENERATION ──────────────────────────────────────────────────
+  /llm/generate-question:
+    post:
+      operationId: generateQuestion
+      tags: [llm]
+      summary: Generate an adaptive practice question
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionGenerateInput"
+      responses:
+        "200":
+          description: Generated question
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdaptiveQuestion"
+
+  /llm/generate-exercise:
+    post:
+      operationId: generateExercise
+      tags: [llm]
+      summary: Generate a set of exercises for a skill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExerciseGenerateInput"
+      responses:
+        "200":
+          description: Generated exercises
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdaptiveQuestion"
+
+  # ── ANALYTICS ─────────────────────────────────────────────────────────────
+  /analytics/student:
+    get:
+      operationId: getStudentAnalytics
+      tags: [analytics]
+      summary: Get analytics for current student
+      responses:
+        "200":
+          description: Student analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentAnalytics"
+
+  /analytics/class/{classId}:
+    get:
+      operationId: getClassAnalytics
+      tags: [analytics]
+      summary: Get analytics for a class
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Class analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassAnalytics"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    # ── USER / AUTH ───────────────────────────────────────────────────────────
+    UserProfile:
+      type: object
+      required: [id, role, email]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [student, teacher, caregiver, admin]
+        createdAt:
+          type: string
+
+    ProfileUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [student, teacher, caregiver, admin]
+
+    # ── STUDENT PROFILE ───────────────────────────────────────────────────────
+    StudentProfile:
+      type: object
+      required: [id, userId, displayName, grade]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        displayName:
+          type: string
+        grade:
+          type: string
+        age:
+          type: ["integer", "null"]
+        interests:
+          type: array
+          items:
+            type: string
+        musicPreference:
+          type: ["string", "null"]
+        culturalContext:
+          type: array
+          items:
+            type: string
+        homeLanguage:
+          type: ["string", "null"]
+        readingLevel:
+          type: ["string", "null"]
+        diagnosedGradeLevel:
+          type: ["string", "null"]
+        placementPathway:
+          type: ["string", "null"]
+          enum: [foundation, developing, proficient, advanced, null]
+        preAssessmentCompleted:
+          type: boolean
+        totalXp:
+          type: integer
+        currentStreak:
+          type: integer
+        createdAt:
+          type: string
+
+    StudentProfileInput:
+      type: object
+      required: [displayName, grade]
+      properties:
+        displayName:
+          type: string
+        grade:
+          type: string
+        age:
+          type: integer
+        interests:
+          type: array
+          items:
+            type: string
+        musicPreference:
+          type: string
+        culturalContext:
+          type: array
+          items:
+            type: string
+        homeLanguage:
+          type: string
+
+    StudentProfileUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+        grade:
+          type: string
+        age:
+          type: integer
+        interests:
+          type: array
+          items:
+            type: string
+        musicPreference:
+          type: string
+        culturalContext:
+          type: array
+          items:
+            type: string
+        homeLanguage:
+          type: string
+        readingLevel:
+          type: string
+
+    StudentDashboard:
+      type: object
+      required: [profile, todayStats, recentMastery, streakDays, totalXp, nextSkills]
+      properties:
+        profile:
+          $ref: "#/components/schemas/StudentProfile"
+        todayStats:
+          $ref: "#/components/schemas/TodayStats"
+        recentMastery:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillMastery"
+        streakDays:
+          type: integer
+        totalXp:
+          type: integer
+        nextSkills:
+          type: array
+          items:
+            $ref: "#/components/schemas/ElaSkill"
+        domainProgress:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainProgress"
+
+    TodayStats:
+      type: object
+      required: [questionsAnswered, correctAnswers, xpEarned, minutesPracticed]
+      properties:
+        questionsAnswered:
+          type: integer
+        correctAnswers:
+          type: integer
+        xpEarned:
+          type: integer
+        minutesPracticed:
+          type: integer
+
+    DomainProgress:
+      type: object
+      required: [domain, domainCode, masteredCount, totalCount, avgScore]
+      properties:
+        domain:
+          type: string
+        domainCode:
+          type: string
+        masteredCount:
+          type: integer
+        totalCount:
+          type: integer
+        avgScore:
+          type: number
+
+    StudentProgress:
+      type: object
+      required: [weeklyXp, masteryTimeline, gradeProgress]
+      properties:
+        weeklyXp:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeeklyXp"
+        masteryTimeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/MasteryTimelinePoint"
+        gradeProgress:
+          $ref: "#/components/schemas/GradeProgress"
+
+    WeeklyXp:
+      type: object
+      required: [week, xp]
+      properties:
+        week:
+          type: string
+        xp:
+          type: integer
+
+    MasteryTimelinePoint:
+      type: object
+      required: [date, masteredCount]
+      properties:
+        date:
+          type: string
+        masteredCount:
+          type: integer
+
+    GradeProgress:
+      type: object
+      required: [enrolledGrade, diagnosedGrade, currentEstimatedGrade]
+      properties:
+        enrolledGrade:
+          type: string
+        diagnosedGrade:
+          type: ["string", "null"]
+        currentEstimatedGrade:
+          type: ["string", "null"]
+
+    # ── ELA SKILLS ────────────────────────────────────────────────────────────
+    ElaSkill:
+      type: object
+      required: [skillCode, skillName, gradeLevel, domainCode]
+      properties:
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        description:
+          type: ["string", "null"]
+        gradeLevel:
+          type: string
+        gradeBand:
+          type: ["string", "null"]
+        domainCode:
+          type: string
+        domain:
+          type: string
+        substrand:
+          type: ["string", "null"]
+        standardLeafCode:
+          type: ["string", "null"]
+        parentGseCode:
+          type: ["string", "null"]
+        parentCcssCode:
+          type: ["string", "null"]
+        difficulty:
+          type: number
+        discrimination:
+          type: number
+        guessing:
+          type: number
+        subSkillOrder:
+          type: integer
+        prerequisiteSkillCodes:
+          type: array
+          items:
+            type: string
+        nextSkillCodes:
+          type: array
+          items:
+            type: string
+        culturallyRelevantThemes:
+          type: array
+          items:
+            type: string
+        sorPillar:
+          type: ["string", "null"]
+        active:
+          type: boolean
+
+    SkillTree:
+      type: object
+      required: [gradeLevel, domains]
+      properties:
+        gradeLevel:
+          type: string
+        domains:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillDomain"
+
+    SkillDomain:
+      type: object
+      required: [domainCode, domain, skills]
+      properties:
+        domainCode:
+          type: string
+        domain:
+          type: string
+        colorHex:
+          type: string
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/ElaSkill"
+
+    # ── MASTERY ───────────────────────────────────────────────────────────────
+    SkillMastery:
+      type: object
+      required: [id, studentId, skillCode, skillName, masteryLevel, smartScore, practiceCount]
+      properties:
+        id:
+          type: string
+        studentId:
+          type: string
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        domain:
+          type: ["string", "null"]
+        masteryLevel:
+          type: string
+          enum: [not_started, introduced, practicing, approaching, mastered]
+        masteryPercentage:
+          type: number
+        smartScore:
+          type: number
+        practiceCount:
+          type: integer
+        correctCount:
+          type: integer
+        needsReteaching:
+          type: boolean
+        isUnlocked:
+          type: boolean
+        lastPracticed:
+          type: ["string", "null"]
+
+    AnswerRecord:
+      type: object
+      required: [correct, questionDifficulty]
+      properties:
+        correct:
+          type: boolean
+        questionDifficulty:
+          type: number
+        timeSpentSeconds:
+          type: integer
+
+    MasterySummary:
+      type: object
+      required: [domains]
+      properties:
+        totalSkills:
+          type: integer
+        masteredSkills:
+          type: integer
+        approachingSkills:
+          type: integer
+        practicingSkills:
+          type: integer
+        notStartedSkills:
+          type: integer
+        overallSmartScore:
+          type: number
+        domains:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainMasterySummary"
+
+    DomainMasterySummary:
+      type: object
+      required: [domainCode, domain, totalSkills, masteredSkills, avgSmartScore]
+      properties:
+        domainCode:
+          type: string
+        domain:
+          type: string
+        totalSkills:
+          type: integer
+        masteredSkills:
+          type: integer
+        avgSmartScore:
+          type: number
+
+    # ── PLACEMENT ─────────────────────────────────────────────────────────────
+    PlacementStartInput:
+      type: object
+      required: [studentId]
+      properties:
+        studentId:
+          type: string
+        startTheta:
+          type: number
+
+    PlacementSession:
+      type: object
+      required: [id, studentId, status, questionCount, theta]
+      properties:
+        id:
+          type: string
+        studentId:
+          type: string
+        status:
+          type: string
+          enum: [in_progress, completed]
+        questionCount:
+          type: integer
+        theta:
+          type: number
+        thetaSe:
+          type: number
+        createdAt:
+          type: string
+
+    AdaptiveQuestion:
+      type: object
+      required: [id, skillCode, skillName, questionText, activityType, options]
+      properties:
+        id:
+          type: string
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        domain:
+          type: string
+        questionText:
+          type: string
+        passage:
+          type: ["string", "null"]
+        activityType:
+          type: string
+          enum: [listen_repeat, see_tap, say_it, write_it, read_it, multiple_choice]
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionOption"
+        correctOptionId:
+          type: string
+        explanation:
+          type: ["string", "null"]
+        difficulty:
+          type: number
+
+    QuestionOption:
+      type: object
+      required: [id, text]
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+
+    PlacementAnswer:
+      type: object
+      required: [questionId, selectedOptionId, skillCode, correct]
+      properties:
+        questionId:
+          type: string
+        selectedOptionId:
+          type: string
+        skillCode:
+          type: string
+        correct:
+          type: boolean
+        timeSpentSeconds:
+          type: integer
+
+    PlacementAnswerResult:
+      type: object
+      required: [correct, newTheta, thetaSe, complete]
+      properties:
+        correct:
+          type: boolean
+        newTheta:
+          type: number
+        thetaSe:
+          type: number
+        complete:
+          type: boolean
+        explanation:
+          type: ["string", "null"]
+
+    PlacementResult:
+      type: object
+      required: [sessionId, diagnosedGradeLevel, placementPathway, thetaFinal]
+      properties:
+        sessionId:
+          type: string
+        diagnosedGradeLevel:
+          type: string
+        placementPathway:
+          type: string
+          enum: [foundation, developing, proficient, advanced]
+        thetaFinal:
+          type: number
+        accuracyPct:
+          type: number
+        strandStrengths:
+          type: array
+          items:
+            type: string
+        strandGaps:
+          type: array
+          items:
+            type: string
+
+    # ── PRACTICE ──────────────────────────────────────────────────────────────
+    PracticeSessionInput:
+      type: object
+      required: [studentId]
+      properties:
+        studentId:
+          type: string
+        focusDomain:
+          type: string
+
+    PracticeSession:
+      type: object
+      required: [id, studentId, status, activitiesCompleted, xpEarned]
+      properties:
+        id:
+          type: string
+        studentId:
+          type: string
+        status:
+          type: string
+          enum: [in_progress, completed]
+        activitiesCompleted:
+          type: integer
+        totalQuestions:
+          type: integer
+        correctAnswers:
+          type: integer
+        xpEarned:
+          type: integer
+        durationMin:
+          type: ["number", "null"]
+        createdAt:
+          type: string
+        completedAt:
+          type: ["string", "null"]
+
+    PracticeActivity:
+      type: object
+      required: [activityNumber, question, skillCode, skillName]
+      properties:
+        activityNumber:
+          type: integer
+        question:
+          $ref: "#/components/schemas/AdaptiveQuestion"
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        domain:
+          type: string
+
+    ActivityAnswer:
+      type: object
+      required: [questionId, selectedOptionId, correct, skillCode]
+      properties:
+        questionId:
+          type: string
+        selectedOptionId:
+          type: string
+        correct:
+          type: boolean
+        skillCode:
+          type: string
+        timeSpentSeconds:
+          type: integer
+
+    ActivityResult:
+      type: object
+      required: [correct, xpEarned, masteryUpdated]
+      properties:
+        correct:
+          type: boolean
+        xpEarned:
+          type: integer
+        masteryUpdated:
+          $ref: "#/components/schemas/SkillMastery"
+        explanation:
+          type: ["string", "null"]
+        encouragement:
+          type: ["string", "null"]
+
+    CompleteSessionInput:
+      type: object
+      required: [totalQuestions, correctAnswers]
+      properties:
+        totalQuestions:
+          type: integer
+        correctAnswers:
+          type: integer
+        durationMin:
+          type: number
+
+    # ── INTERVENTION ──────────────────────────────────────────────────────────
+    InterventionPathway:
+      type: object
+      required: [studentId, gradeGap, currentPhase, phases]
+      properties:
+        studentId:
+          type: string
+        gradeGap:
+          type: integer
+        currentPhase:
+          type: integer
+        phases:
+          type: array
+          items:
+            $ref: "#/components/schemas/InterventionPhase"
+
+    InterventionPhase:
+      type: object
+      required: [phaseNumber, name, description, skills]
+      properties:
+        phaseNumber:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/InterventionSkillCard"
+
+    InterventionSkillCard:
+      type: object
+      required: [skillCode, skillName, masteryLevel, smartScore]
+      properties:
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        masteryLevel:
+          type: string
+        smartScore:
+          type: number
+        masteryPercentage:
+          type: number
+
+    # ── TEACHER ───────────────────────────────────────────────────────────────
+    TeacherClass:
+      type: object
+      required: [id, teacherId, className, gradeLevel, classCode]
+      properties:
+        id:
+          type: string
+        teacherId:
+          type: string
+        className:
+          type: string
+        gradeLevel:
+          type: string
+        classCode:
+          type: string
+        schoolName:
+          type: ["string", "null"]
+        studentCount:
+          type: integer
+        active:
+          type: boolean
+        createdAt:
+          type: string
+
+    TeacherClassInput:
+      type: object
+      required: [className, gradeLevel]
+      properties:
+        className:
+          type: string
+        gradeLevel:
+          type: string
+        schoolName:
+          type: string
+
+    StudentRosterEntry:
+      type: object
+      required: [studentId, displayName, grade, avgSmartScore, lastActive]
+      properties:
+        studentId:
+          type: string
+        displayName:
+          type: string
+        grade:
+          type: string
+        diagnosedGrade:
+          type: ["string", "null"]
+        gradeGap:
+          type: ["integer", "null"]
+        avgSmartScore:
+          type: number
+        growthVelocity:
+          type: number
+        totalXp:
+          type: integer
+        lastActive:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [on_track, intervention, not_tested]
+        domainScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainScore"
+
+    DomainScore:
+      type: object
+      required: [domainCode, score]
+      properties:
+        domainCode:
+          type: string
+        score:
+          type: number
+
+    ClassHeatmap:
+      type: object
+      required: [classId, students, domains]
+      properties:
+        classId:
+          type: string
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/HeatmapStudent"
+        domains:
+          type: array
+          items:
+            type: string
+
+    HeatmapStudent:
+      type: object
+      required: [studentId, displayName, domainScores]
+      properties:
+        studentId:
+          type: string
+        displayName:
+          type: string
+        domainScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainScore"
+
+    TeacherDashboard:
+      type: object
+      required: [totalStudents, interventionCount, onTrackCount, notTestedCount, recentAlerts]
+      properties:
+        totalStudents:
+          type: integer
+        interventionCount:
+          type: integer
+        onTrackCount:
+          type: integer
+        notTestedCount:
+          type: integer
+        avgClassScore:
+          type: number
+        recentAlerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeacherAlert"
+
+    TeacherAlert:
+      type: object
+      required: [id, studentId, studentName, alertType, message, createdAt]
+      properties:
+        id:
+          type: string
+        studentId:
+          type: string
+        studentName:
+          type: string
+        alertType:
+          type: string
+          enum: [needs_reteaching, grade_gap, low_engagement, mastery_achieved]
+        message:
+          type: string
+        createdAt:
+          type: string
+        resolved:
+          type: boolean
+
+    # ── LESSONS ───────────────────────────────────────────────────────────────
+    LessonSession:
+      type: object
+      required: [id, title, gradeLevel, domain, status]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        gradeLevel:
+          type: string
+        domain:
+          type: string
+        standardCode:
+          type: ["string", "null"]
+        framingLesson:
+          type: ["string", "null"]
+        discussionQuestions:
+          type: array
+          items:
+            type: string
+        writingPrompts:
+          type: array
+          items:
+            type: string
+        vocabularyList:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [draft, published]
+        createdAt:
+          type: string
+
+    LessonGenerateInput:
+      type: object
+      required: [text, gradeLevel, domain]
+      properties:
+        text:
+          type: string
+        title:
+          type: string
+        gradeLevel:
+          type: string
+        domain:
+          type: string
+        standardCode:
+          type: string
+
+    # ── TTS ───────────────────────────────────────────────────────────────────
+    TtsInput:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+        voiceId:
+          type: string
+
+    TtsResult:
+      type: object
+      required: [audioBase64]
+      properties:
+        audioBase64:
+          type: string
+        durationSeconds:
+          type: ["number", "null"]
+
+    # ── AI GENERATION ─────────────────────────────────────────────────────────
+    QuestionGenerateInput:
+      type: object
+      required: [skillCode, gradeLevel, activityType]
+      properties:
+        skillCode:
+          type: string
+        gradeLevel:
+          type: string
+        activityType:
+          type: string
+        interests:
+          type: array
+          items:
+            type: string
+        culturalContext:
+          type: array
+          items:
+            type: string
+        homeLanguage:
+          type: string
+        theta:
+          type: number
+
+    ExerciseGenerateInput:
+      type: object
+      required: [skillCode, gradeLevel, count]
+      properties:
+        skillCode:
+          type: string
+        gradeLevel:
+          type: string
+        count:
+          type: integer
+        interests:
+          type: array
+          items:
+            type: string
+
+    # ── ANALYTICS ─────────────────────────────────────────────────────────────
+    StudentAnalytics:
+      type: object
+      required: [studentId, weeklyXp, domainBreakdown, growthVelocity]
+      properties:
+        studentId:
+          type: string
+        weeklyXp:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeeklyXp"
+        domainBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainMasterySummary"
+        growthVelocity:
+          type: number
+        onTrack:
+          type: boolean
+
+    ClassAnalytics:
+      type: object
+      required: [classId, avgScore, onTrackPct, interventionPct, domainAverages]
+      properties:
+        classId:
+          type: string
+        avgScore:
+          type: number
+        onTrackPct:
+          type: number
+        interventionPct:
+          type: number
+        domainAverages:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainScore"

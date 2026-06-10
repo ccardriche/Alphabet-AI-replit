@@ -1,0 +1,31 @@
+import { pgTable, text, real, integer, boolean, timestamp, uuid, unique } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
+
+export const skillMasteryTable = pgTable("skill_mastery", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id").notNull(),
+  skillCode: text("skill_code").notNull(),
+  skillName: text("skill_name").notNull(),
+  domain: text("domain"),
+  masteryLevel: text("mastery_level").notNull().default("not_started"),
+  masteryPercentage: real("mastery_percentage").notNull().default(0),
+  smartScore: real("smart_score").notNull().default(0),
+  practiceCount: integer("practice_count").notNull().default(0),
+  correctCount: integer("correct_count").notNull().default(0),
+  consecutiveErrors: integer("consecutive_errors").notNull().default(0),
+  needsReteaching: boolean("needs_reteaching").notNull().default(false),
+  isUnlocked: boolean("is_unlocked").notNull().default(true),
+  sequenceOrder: integer("sequence_order").notNull().default(0),
+  lastPracticed: timestamp("last_practiced", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => ({
+  uniqueStudentSkill: unique().on(table.studentId, table.skillCode),
+}));
+
+export const insertSkillMasterySchema = createInsertSchema(skillMasteryTable).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type InsertSkillMastery = z.infer<typeof insertSkillMasterySchema>;
+export type SkillMastery = typeof skillMasteryTable.$inferSelect;
