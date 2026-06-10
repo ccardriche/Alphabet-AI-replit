@@ -6,6 +6,7 @@ import {
   useGetNextPlacementQuestion,
   useSubmitPlacementAnswer,
   useGetPlacementResult,
+  useGetStudentProfile,
   getGetStudentProfileQueryKey,
   getGetNextPlacementQuestionQueryKey,
   getGetPlacementResultQueryKey,
@@ -15,7 +16,6 @@ import { GraduationCap, CheckCircle, XCircle, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { STUDENT_ID_KEY } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 
 type Phase = "intro" | "question" | "result";
@@ -31,6 +31,7 @@ export default function Placement() {
   const [questionCount, setQuestionCount] = useState(0);
   const [correct, setCorrect] = useState<boolean | null>(null);
 
+  const { data: studentProfile } = useGetStudentProfile();
   const startPlacement = useStartPlacement();
   const submitAnswer = useSubmitPlacementAnswer();
   const { data: question, refetch: refetchQuestion } = useGetNextPlacementQuestion(sessionId, {
@@ -46,11 +47,9 @@ export default function Placement() {
     },
   });
 
-  const studentId = localStorage.getItem(STUDENT_ID_KEY) ?? "00000000-0000-0000-0000-000000000001";
-
   async function handleStart() {
     try {
-      const session = await startPlacement.mutateAsync({ data: { studentId } });
+      const session = await startPlacement.mutateAsync({ data: { studentId: studentProfile?.id ?? "" } });
       setSessionId(session.id);
       setPhase("question");
       setTimeout(() => refetchQuestion(), 100);

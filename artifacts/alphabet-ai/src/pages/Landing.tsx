@@ -1,10 +1,56 @@
+import { useEffect } from "react";
+import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { GraduationCap, BookOpen, Users, ArrowRight, Star, TrendingUp, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@workspace/replit-auth-web";
+import { useGetStudentProfile, getGetStudentProfileQueryKey } from "@workspace/api-client-react";
+
+const ROLE_KEY = "alphabet_ai_role";
 
 export default function Landing() {
-  const { login } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, login } = useAuth();
+  const [, setLocation] = useLocation();
+
+  const {
+    data: profile,
+    isLoading: profileLoading,
+    error: profileError,
+  } = useGetStudentProfile({
+    query: {
+      queryKey: getGetStudentProfileQueryKey(),
+      enabled: isAuthenticated,
+      retry: false,
+    },
+  });
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+    if (profileLoading) return;
+
+    if (profile) {
+      if ((profile as any).preAssessmentCompleted) {
+        setLocation("/dashboard");
+      } else {
+        setLocation("/placement");
+      }
+    } else if (profileError) {
+      const role = sessionStorage.getItem(ROLE_KEY);
+      if (role === "teacher") {
+        setLocation("/teacher");
+      } else {
+        setLocation("/onboarding");
+      }
+    }
+  }, [authLoading, isAuthenticated, profileLoading, profile, profileError, setLocation]);
+
+  if (isAuthenticated && (profileLoading || !profileError)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const features = [
     { icon: Brain, label: "Adaptive IRT Engine", desc: "Questions calibrate to each student's level in real time" },
@@ -15,14 +61,12 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 text-white overflow-hidden">
-      {/* Grid background */}
       <div className="absolute inset-0 opacity-10" style={{
         backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
         backgroundSize: "40px 40px"
       }} />
 
       <div className="relative z-10 max-w-6xl mx-auto px-6 py-16">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -35,7 +79,6 @@ export default function Landing() {
           <span className="text-xl font-bold">Alphabet AI</span>
         </motion.div>
 
-        {/* Hero */}
         <div className="grid lg:grid-cols-2 gap-16 items-center mb-24">
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -61,7 +104,7 @@ export default function Landing() {
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold px-8 gap-2"
-                onClick={() => login()}
+                onClick={() => { sessionStorage.setItem(ROLE_KEY, "student"); login(); }}
                 data-testid="btn-student-login"
               >
                 <BookOpen className="w-4 h-4" />
@@ -72,7 +115,7 @@ export default function Landing() {
                 size="lg"
                 variant="outline"
                 className="border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white font-semibold px-8 gap-2"
-                onClick={() => login()}
+                onClick={() => { sessionStorage.setItem(ROLE_KEY, "teacher"); login(); }}
                 data-testid="btn-teacher-login"
               >
                 <Users className="w-4 h-4" />
@@ -81,7 +124,6 @@ export default function Landing() {
             </div>
           </motion.div>
 
-          {/* Stats card */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
@@ -124,14 +166,13 @@ export default function Landing() {
           </motion.div>
         </div>
 
-        {/* Features */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
           className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"
         >
-          {features.map(({ icon: Icon, label, desc }, i) => (
+          {features.map(({ icon: Icon, label, desc }) => (
             <div key={label} className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/8 transition-colors">
               <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center mb-3">
                 <Icon className="w-4 h-4 text-indigo-300" />

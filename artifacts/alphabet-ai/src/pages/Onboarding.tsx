@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { GRADE_OPTIONS, INTEREST_OPTIONS, STUDENT_ID_KEY } from "@/lib/constants";
+import { GRADE_OPTIONS, INTEREST_OPTIONS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 
 const schema = z.object({
@@ -63,7 +63,6 @@ export default function Onboarding() {
           culturalContext: data.culturalContext ?? [],
         },
       });
-      localStorage.setItem(STUDENT_ID_KEY, profile.id);
       setLocation("/placement");
     } catch {
       toast({ title: "Something went wrong", description: "Please try again.", variant: "destructive" });
