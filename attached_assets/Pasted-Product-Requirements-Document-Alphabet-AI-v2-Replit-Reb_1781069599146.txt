@@ -1,0 +1,463 @@
+Product Requirements Document — Alphabet AI v2 (Replit Rebuild)
+Working title: Alphabet AI — Adaptive K-12 ELA Mastery Platform Author: China Cardriche Status: Draft v1.1 Last updated: June 10, 2026 Target build environment: Replit (full-stack) — React + Vite frontend, Node/Express API, Supabase (Postgres + Auth + Storage + Realtime) Builds on: Alphabet AI — Product Design Reference (PDR) v1.0, June 2026 (the existing rebuild spec) Replaces: Alphabet AI Base44 app (6958a13f5cd77c4eabd5441c, 59 entities)
+
+How to read this document. The PDR is the authoritative design reference for the current Base44 app and its 1:1 Replit port. This PRD sits on top of it: it carries the PDR's decisions forward verbatim where they hold, and specifies the substantial extensions that make the rebuild more comprehensive and aligned to IXL's skill-progression model. Sections marked [from PDR] restate the existing spec; sections marked [new / extends PDR] are the additions this rebuild introduces.
+
+
+1. Executive summary
+Alphabet AI is a Science-of-Reading, culturally-responsive ELA platform. The PDR already specifies a faithful Replit rebuild of the current Base44 app — same data model, same React stack, Supabase backend, a working 3-PL IRT placement engine, an 8-phase build plan, and six pilot rubrics.
+
+This PRD pushes that rebuild three steps further, per the requested direction:
+
+Full K-12 breadth at IXL granularity. The PDR already envisions an ELASkill catalog of ~2,000+ granular sub-skills. This PRD operationalizes that as an IXL-style, single-objective skill catalog — seeded directly from the 13 uploaded IXL skill plans (grades K-12), which already enumerate ~1,200 granular skill alignments.
+Port and extend the data model into owned Postgres, layering a continuous SmartScore-style mastery score (0-100) on top of the PDR's discrete mastery_level.
+A custom adaptive engine and content-authoring pipeline that go beyond the PDR's single-θ IRT — full computerized-adaptive testing (CAT), per-domain θ, spaced repetition, and AI-assisted item authoring at scale.
+
+It also surfaces one decision that must be made before Phase 1: the PDR is built on Georgia's old GSE (ELAGSE…) standards, but the uploaded IXL plans target Georgia's 2025 K-12 ELA Standards (a new F/L/T strand architecture). See §5.
+
+
+2. Product vision [from PDR]
+Mission: give every K-12 student — especially those reading below grade level — a personalized, culturally responsive ELA experience grounded in the Science of Reading, standards-aligned, and powered by AI-adaptive instruction.
+
+Pillars carried from the PDR:
+
+Adaptive assessment — IRT placement routes K-12 in real time; diagnoses grade-equivalent reading level, identifies strand gaps, builds intervention plans.
+Standards-first — every skill, question, and lesson maps to a specific standard code with a CCSS crosswalk; coverage tracked against Rubric 06 (≥80% priority standards).
+Culturally responsive — student interests, cultural context, and home language drive all content generation; no generic passages.
+Durable skills — tracks 10 America Succeeds durable-skill dimensions alongside academic standards.
+Teacher visibility — real-time standards heatmaps, growth velocity, intervention flags, coverage rollups.
+Three-mode work time — Whole-Class Framing → Individual Adaptive Practice → Group Discussion; uploaded books generate aligned lessons.
+2.1 Pilot success metrics (Rubrics) [from PDR]
+Rubric
+Metric
+Target
+Rubric 01
+Crash-free sessions
+≥ 99%
+Rubric 02
+AI response quality (score 4-5)
+≥ 80%
+Rubric 03
+Teacher trust avg + value alignment
+Avg ≥ 4.0, ≥ 70% of teachers
+Rubric 04
+Student engagement — weekly return rate
+≥ 60%
+Rubric 05
+Students with ≥ 20% growth
+≥ 70%
+Rubric 06
+GSE + CCSS coverage + skill sequencing
+≥ 80% / ≥ 80% / ≥ 90%
+
+
+
+3. User personas [from PDR]
+Persona (auth role)
+Primary views
+Core needs
+Student (user) — K-12, focus 5th-10th
+Dashboard, Daily Practice, Work Time, Skill Tree, Intervention Pathway, Identity Quest
+Culturally relevant at-level practice that builds confidence
+Teacher (admin)
+Teacher Dashboard, Class Roster, Book Upload, Analytics, Group Projects
+Real-time intervention alerts, standards heatmaps, easy lesson generation from classroom books
+Caregiver (user)
+CaregiverView, ParentDashboard, WeeklyDigest
+Simple weekly summary, celebrate wins, message the teacher
+
+
+
+4. Scope
+In scope: full K-12 ELA, all strands, aligned to Georgia + CCSS, with the IXL-granularity skill catalog and the full feature set (F1-F8 below).
+Architected-for-later, not built: other states' standards; non-ELA subjects; native mobile; fully autonomous high-stakes writing grading (AI assists, teacher overrides remain).
+
+
+5. Standards architecture — decision required [new / extends PDR]
+The PDR and the uploaded IXL plans use two different Georgia standards versions. This must be reconciled before seeding the catalog.
+
+
+
+PDR (current design)
+Uploaded IXL skill plans
+Standard set
+Georgia GSE (2015, CCSS-aligned)
+Georgia 2025 K-12 ELA Standards
+Code format
+ELAGSE6RL2, banded ELAGSE9-10RL1
+1.F.PA.5.a, 3.F.P.4.b, 9-12.L.GC.1
+Strands
+RF, RL, RI, W, L, SL, RH, RST, WHST
+F Foundations, L Language, T Texts
+Substrands
+(strand = domain)
+F: PA/P/F/H · L: GC/V · T: C/T
+Bands
+grade, 9-10, 11-12
+K-1, K-2, 3-5, 6-8, 9-12 + grade leaves
+
+
+Recommendation: adopt the 2025 K-12 ELA Standards as the primary taxonomy (it is what Georgia now uses and what IXL aligns to), and keep a GSE ↔ 2025 ↔ CCSS crosswalk so existing pilot data and the PDR's StandardCrosswalk still resolve. The uploaded plans become the catalog backbone (see §6.1). If the pilot must report against GSE for contractual reasons, run the crosswalk in reverse for Rubric 06.
+5.1 2025 strand reference (from uploaded plans)
+Strand
+Substrands
+Grades
+F — Foundations
+PA (phonological awareness), P (phonics & word recognition), F (fluency), H (handwriting)
+K-5
+L — Language
+GC (grammar & conventions), V (vocabulary)
+K-12
+T — Texts
+C (composition/communication), T (texts: literary & informational)
+K-12
+
+
+Per-grade skill counts observed in the uploaded plans (catalog-seed scale):
+
+Grade
+~Skills
+Grade
+~Skills
+Grade
+~Skills
+K
+90
+5
+91
+10
+75
+1
+109
+6
+105
+11
+72
+2
+111
+7
+79
+12
+67
+3
+106
+8
+97
+
+
+
+
+4
+136
+9
+82
+Total
+~1,200
+
+
+
+6. The skill progression model — IXL alignment [new / extends PDR]
+The PDR already defines a granular ELASkill entity (~2,000+ records) with prerequisite/next chains and IRT parameters. This section makes that catalog IXL-aligned in three layers.
+6.1 Layer 1 — Granular skill catalog
+A Skill = one specific objective (e.g. "Does the word end with a consonant blend?", "Identify appositives and appositive phrases."). Fields extend the PDR's ELASkill:
+
+skill_code (e.g. RF-PA-01 today → migrate to 2025-aligned codes), skill_name, description
+standard_leaf_code (one 2025 substandard) + parent_gse_code + parent_ccss_code (crosswalk, kept from PDR)
+domain/strand/substrand, grade_level, grade_band, sub_skill_order
+prerequisite_skill_codes[], next_skill_codes[] (the DAG that powers intervention walking)
+IRT params difficulty (b, -3..+3), discrimination (a, default 1.0), guessing (c, default 0.25) [from PDR]
+sor_pillar (F-strand only), culturally_relevant_themes[], durable_skill_codes[], activity_types[], active
+
+Seeding: ingest the 13 uploaded IXL plans as the catalog backbone (~1,200 skills already mapped to 2025 standards), then extend toward the ~2,000+ target.
+6.2 Layer 2 — Continuous mastery scoring (SmartScore-style)
+Add a live SmartScore (0-100) per (student, skill) alongside the PDR's discrete mastery_level:
+
+Rises with correct answers, falls with errors; weighted by item difficulty, consistency, and volume.
+80 = Proficient (matches the PDR's existing 80% advance threshold), 90 = Challenge Zone (harder items to confirm), 100 = Mastery.
+Decay/refresh so stale mastery prompts light review (ties to spaced repetition, §8).
+
+This makes the proficiency signal continuous and IXL-comparable while preserving the PDR's mastered/approaching/practicing/introduced labels as derived bands.
+6.3 Layer 3 — Adaptive routing
+Two behaviors, both extending the PDR's engine (§8): IRT diagnostic placement (start point in the catalog graph) and in-skill difficulty ramp (each skill opens with intro items and ramps in real time).
+
+
+7. Data model [from PDR, extended]
+All entities keep auto-managed fields: id (UUID PK), created_date, updated_date, created_by_id (timestamps default in Postgres). Below are the load-bearing entities; the rebuild ports all 59.
+7.1 StudentProfile [from PDR]
+user_id (FK auth), display_name (req), grade (enum K, 1st-12th), age, interests[] (sports, music, gaming, anime, art, science, food, fashion, animals), music_preference, cultural_context[], home_language, accessibility_needs (jsonb: text_to_speech, large_text, high_contrast, extended_time, dyslexia_font, tts_on_highlight), reading_level, diagnosed_grade_level, intervention_target_grade, placement_pathway (foundation/developing/proficient/advanced), total_xp (0), current_streak (0), longest_streak (0), badges_earned[], teacher_id (FK), parent_email, onboarding_completed (false), pre_assessment_completed (false — gates StudentDashboard).
+7.2 ELASkill — granular catalog (~2,000+) [from PDR + §6.1 extensions]
+skill_code (unique, e.g. RF-PA-01), skill_name, description, grade_level, domain_code (RL/RI/RF/W/L/SL), parent_gse_code (FK), parent_ccss_code (FK), prerequisite_skill_codes[], next_skill_codes[], difficulty (b), discrimination (a, 1.0), guessing (c, 0.25), sub_skill_order, culturally_relevant_themes[], durable_skill_codes[], active. Add (§6): standard_leaf_code (2025), sor_pillar, activity_types[], smartscore-readiness.
+7.3 StandardGSE (~500+) [from PDR]
+grade_level (K,1-12,9-10,11-12), strand (RF/RL/RI/W/L/SL/RH/RST/WHST), standard_code (e.g. ELAGSE6RL2), description, cluster_heading, anchor_code (e.g. CCRA.R.1), prerequisite_standard_id (FK self), rigor_level (1-4), active. Add: a parallel Standard2025 table (or extend with a framework column) for the F/L/T taxonomy + StandardCrosswalk GSE↔2025↔CCSS.
+7.4 SkillMastery (student × skill) [from PDR + SmartScore]
+student_id (FK), skill_code (FK), skill_name, phase (foundation/developing/proficient/advanced), pillar (phonological_awareness/phonics/syllable_types/morphology/fluency), mastery_level (not_started→introduced→practicing→approaching→mastered), mastery_percentage (0-100, 80% to advance), practice_count, correct_count, needs_reteaching (true after 3 consecutive errors), is_unlocked, sequence_order, next_skill_code, difficulty_adjustment (-2..+2), last_practiced. Add: smartscore (0-100), challenge_zone (bool), mastered_at.
+7.5 StandardMastery (student × standard) [from PDR]
+student_id, standard_code (FK), strand, mastery_status (not_started/in_progress/approaching/mastered), proficiency_score (0-100), attempts_count/correct_count, growth_velocity (RIT pts/week), achievement_level (Beginning/Developing/Proficient/Distinguished), last_practiced.
+7.6 Other key entities [from PDR]
+TeacherClass (teacher_id, class_name, class_code, grade_level, school_name, student_count, active, work_time_rotation[]) · ClassEnrollment · LessonSession (activities{1-5}, duration_min, performance{total_questions, correct_answers}, status, xp_earned) · PracticeSession · AdaptiveAssessmentSession (session_type, theta_final, theta_se, accuracy_pct, timestamps) · ProgressMonitoringResult (rit_score, rit_delta, growth_velocity_pts_per_week, on_track, strand_scores{}, alerts_triggered[]) · DurableSkillProgress (10 America Succeeds categories, proficiency_level, growth_trend, evidence_count, recent_evidence[]) · IdentityCircle (circle 1-3 SELF/FAMILY/COMMUNITY) · IdentityProject (12 types, rubric_scores, feedback, artifact_urls) · ContentLibrary (type, content{title, book_title, standard_code, grade_level, data, summary}, tags[]) · GroupProject + ProjectGroup (shared_document, messages[]) · WeeklyQuest · TeacherAlert (alert_code, severity, action_required, is_dismissed) · TeacherEvaluation (6 rubric dims 1-5, average_score, phase) · CaregiverProfile + WeeklyDigest · StandardCrosswalk (gse ↔ ccss, alignment_strength) · DurableSkill (10 categories) · CommonCoreStandard.
+
+
+8. Adaptive engine [from PDR baseline + extensions]
+8.1 Baseline (PDR — ship as-is in Phase 2)
+3-Parameter Logistic IRT, Newton-Raphson θ update, theta→grade mapping, skill selector, and mastery computation are already specified as working code:
+
+// 3-PL IRT
+function irtProb(theta, a=1, b=0, c=0.25) {
+  return c + (1 - c) / (1 + Math.exp(-a * (theta - b)));
+}
+// θ update (Newton-Raphson), bounded -3..+3
+function updateTheta(prevTheta, correct, skill) {
+  const { difficulty: b, discrimination: a = 1, guessing: c = 0.25 } = skill;
+  const p = irtProb(prevTheta, a, b, c);
+  const info = a**2 * (p-c)**2 * (1-p) / (p * (1-c)**2);
+  const delta = info > 0 ? (correct ? 1 : -1) * ((p-c)/((1-c)*info)) : 0;
+  return Math.max(-3, Math.min(3, prevTheta + delta));
+}
+// Stop: 20 questions OR SE < 0.5 after min 10
+const shouldStop = (count, n) => count >= 20 || (count >= 10 && 1/Math.sqrt(n) < 0.5);
+
+thetaToGrade maps θ (-3=K … +3=12th) linearly; selectNextSkill prioritizes needs_reteaching → approaching → practicing → introduced → not_started; computeMastery advances to mastered at ≥80% over ≥5 attempts.
+8.2 Extensions (this rebuild)
+Isolate the engine as a dedicated, unit-tested service (Node module or Python FastAPI) and upgrade per the PDR's own "Improvement Opportunities":
+
+Full CAT with a pre-calibrated item bank (AdaptiveItem) and maximum-information item selection, replacing question-by-question LLM generation at test time (pre-generate + cache).
+Multi-dimensional IRT — a separate θ per domain/strand, so placement reports per-strand strengths/gaps natively.
+Tighter stopping (SE < 0.3) for diagnostic precision; RIT-equivalent, Lexile, and grade-equivalent outputs.
+SmartScore layer (§6.2) — translate item outcomes into the 0-100 per-skill score with Challenge-Zone gating at 90.
+Spaced repetition (SM-2) for review scheduling and SmartScore decay.
+engine_version stamped on every result for reproducibility/audit (supports Rubric 02).
+
+
+9. Feature specifications [from PDR]
+F1 — Adaptive Placement (IRT). 3-PL; start θ=0 (6th), Newton-Raphson update; stop at 20 Qs or SE<0.5 after ≥10; θ→grade; LLM-generated questions personalized by interests; outputs diagnosed_grade_level, placement_pathway, strand strengths/gaps, seeds StandardMastery; gates the dashboard until pre_assessment_completed.
+F2 — Daily Adaptive Practice (5 activities). Listen & Repeat → See & Tap → Say It → Write It → Read It; selects next unlocked skill by priority; LLM prompt includes skill, standard, interests, cultural_context, home_language; mastery at 80% over ≥5; 3 consecutive errors → reteach; XP 10/correct + bonuses; ElevenLabs TTS on all text.
+F3 — Work Time (3-mode rotation). Whole-Class Framing (10 min, ContentLibrary + timer) → Individual Practice (20 min, DailyPractice) → Group Discussion (15 min, LLM-generated prompts/roles); order on TeacherClass.work_time_rotation.
+F4 — Book Upload & Lesson Generator. PDF/EPUB or pasted text → select grade/domain/standard → generates framing lesson, 7 tiered discussion questions, 3 writing prompts, 15-word vocab list → saved to ContentLibrary; feeds F3 framing.
+F5 — Intervention Pathway (3 phases). Detects grade gap (enrolled − diagnosed); Phase 1 Foundation Reset → Phase 2 Gap Acceleration → Phase 3 On-Grade Growth; each skill card = mastery bar + Practice launch.
+F6 — ELA Skill Tree (IXL-style). K-12 grade selector loads ELASkill by grade, grouped by domain with color coding + mastery heatmap; expand for standard code, CCSS crosswalk, cultural themes, durable-skill links, next unlocks; search by name/code/domain.
+F7 — Teacher Roster (standards heatmap). Student × enrolled/diagnosed grade × avg score × growth velocity × domain heatmap; filters All/Intervention/On Track/Not Tested; detail panel with full heatmap, grade gap, skill mastery, durable skills, interests.
+F8 — Identity Quest (3-circle writing). 12 project types (who_am_i_poem, power_profile, my_hero_story, joy_map, define_family, family_tree, family_interview, our_story, community_map, community_hero, problem_solution, we_are_collective); rubric scoring + teacher/peer feedback + family share link; builds DurableSkillProgress.
+
+
+10. Content authoring at scale [new / extends PDR]
+The catalog needs items for ~2,000+ skills across K-12 — beyond hand-authoring. Build an authoring pipeline (the PDR's ExerciseGenerator is the seed of F-stage step 2):
+
+Standards & catalog importer — parse the 2025 standards + the uploaded IXL plan PDFs into Standard2025 + seed ELASkill (~1,200 backbone).
+AI item generation — given skill + activity type + grade + cultural tags, draft items (stem, options, distractor rationale, explanation, passage), with IRT difficulty estimates. Pre-generate and cache per skill (background job) rather than at test time.
+Automated QA gates — readability/grade-band, answer-key validation, distractor plausibility, bias/sensitivity screen, duplicate detection.
+Human review queue — curriculum lead approves/edits; status draft → in_review → published (the human-in-the-loop Rubric 02 needs).
+Item analytics — post-launch p-value/point-biserial to retire weak items and recalibrate IRT params.
+
+
+11. Technology stack [from PDR]
+Layer
+Choice
+Frontend
+React 18 + Vite + TailwindCSS + shadcn/ui + Framer Motion + Recharts + React Query v5 + React Router v6
+Backend
+Node.js + Express (or Hono) API server
+DB + Auth + Storage + Realtime
+Supabase (Postgres) — closest match to Base44
+AI
+OpenAI API (GPT-4o-mini standard tasks, GPT-4o adaptive logic)
+TTS
+ElevenLabs (reuse ELEVENLABS_API_KEY)
+Email
+Resend (caregiver weekly digests)
+Adaptive engine
+Isolated, unit-tested service (§8)
+
+
+Why Replit + Supabase over Base44: owned relational schema/queries, a real testable adaptive service, bulk authoring tooling, and predictable performance/cost at K-12 scale.
+11.1 Integrations → Replit equivalents [from PDR]
+Base44
+Purpose
+Replit equivalent
+textToSpeech (backend fn)
+TTS / pronunciation
+POST /api/tts → ElevenLabs
+InvokeLLM
+AI content generation
+POST /api/llm → OpenAI
+UploadFile
+Artifacts, book PDFs
+Supabase Storage
+ExtractDataFromUploadedFile
+Parse PDF/EPUB
+OpenAI Vision or PDF.js
+SendEmail
+Caregiver digests
+Resend
+
+11.2 Base44 → Supabase SDK cheatsheet [from PDR]
+entities.X.list() → supabase.from('x').select('*').order('created_at',{ascending:false}).limit(50) · .filter({f:v}) → .eq('f',v) · .create(d) → .insert(d).select().single() · .update(id,d) → .update(d).eq('id',id).select().single() · .delete(id) → .delete().eq('id',id) · auth.me() → auth.getUser() · .subscribe(cb) → channel('x').on('postgres_changes',{event:'*',schema:'public',table:'x'},cb).subscribe() · functions.invoke('fn',p) → fetch('/api/fn',…).
+11.3 Required environment variables [from PDR]
+SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (server-only), OPENAI_API_KEY, ELEVENLABS_API_KEY, RESEND_API_KEY.
+
+
+12. Pages & routes [from PDR]
+Route
+File
+User
+Description
+/
+Home.jsx
+All
+Landing / role router
+/Onboarding
+Onboarding.jsx
+Student
+Profile setup: name, grade, interests, accessibility
+/AdaptivePlacement
+AdaptivePlacement.jsx
+Student
+IRT K-12 placement, 10-20 questions
+/StudentDashboard
+StudentDashboard.jsx
+Student
+Hub: stats, today's practice, quests
+/DailyPractice
+DailyPractice.jsx
+Student
+5-activity adaptive session
+/WorkTime
+WorkTime.jsx
+Student
+3-mode class rotation
+/ELASkillTree
+ELASkillTree.jsx
+Student
+K-12 skill map, mastery heatmap
+/SkillMap
+SkillMap.jsx
+Student
+OG phase-based skill map
+/InterventionPathway
+InterventionPathway.jsx
+Student
+AI 3-phase catch-up plan
+/IdentityQuest
+IdentityQuest.jsx
+Student
+3-circle identity writing
+/Progress
+Progress.jsx
+Student
+Progress charts, mastery timelines
+/GroupProjects
+GroupProjects.jsx
+Both
+Collaborative workspace
+/TeacherDashboard
+TeacherDashboard.jsx
+Teacher
+Student list, activity, flags
+/TeacherRoster
+TeacherRoster.jsx
+Teacher
+Heatmaps, grade gaps, velocity
+/TeacherClassAnalytics
+TeacherClassAnalytics.jsx
+Teacher
+Cohort trends, rubric rollups
+/BookUpload
+BookUpload.jsx
+Teacher
+Books → framing lessons, Qs, vocab
+/ExerciseGenerator
+ExerciseGenerator.jsx
+Teacher
+Manual AI exercise generation
+/DIBELSAssessment
+DIBELSAssessment.jsx
+Both
+DIBELS fluency benchmark
+/GeorgiaAssessment
+GeorgiaAssessment.jsx
+Student
+State-style practice assessments
+/CaregiverView
+CaregiverView.jsx
+Caregiver
+Parent progress overview
+/ParentDashboard
+ParentDashboard.jsx
+Caregiver
+Weekly digest, teacher messaging
+
+
+
+13. Design system [from PDR]
+Domain colors: RL Literature #3b82f6 · RI Informational #06b6d4 · RF Foundations #8b5cf6 · W Writing #10b981 · SL Speaking #f59e0b · L Language #f43f5e. Mastery states: not_started gray-200 · introduced blue-300 · practicing amber-400 · approaching purple-400 · mastered green-500. Heatmap scale: ≥80% green-400 · 60-79% yellow-300 · 40-59% orange-300 · <40% red-300 · no data gray-100. Layout: desktop 256px fixed left sidebar; mobile top bar + bottom tab nav; cards border-0 shadow-sm; gradients indigo-600 → purple-600.
+
+Note: when migrating to the 2025 F/L/T strands, extend the domain-color map (Foundations, Language, Texts) while keeping the existing RL/RI/RF/W/SL/L colors for crosswalked views.
+
+
+14. Build roadmap [from PDR, with extension hooks]
+Phase
+What to build
+Why first
+1 — Foundation
+Supabase schema; seed ELASkill + StandardGSE/Standard2025 + DurableSkill; auth; layout/nav; StudentProfile. [Extension: ingest the 13 IXL plans as the catalog seed; finalize §5 standards decision.]
+Everything depends on standards + user records
+2 — Core Student
+Onboarding, AdaptivePlacement (IRT), StudentDashboard, DailyPractice. [Extension: SmartScore layer, engine as isolated service.]
+Main value loop must work end-to-end
+3 — Teacher
+TeacherDashboard, TeacherRoster (heatmaps), TeacherClass, ClassEnrollment, alerts
+Teachers need visibility before schools
+4 — Skill Systems
+ELASkillTree, SkillMap, InterventionPathway, mastery advancement. [Extension: full CAT, per-domain θ, SM-2.]
+Adds depth and retention
+5 — Classroom
+WorkTime (3-mode), BookUpload + lesson generation, ContentLibrary. [Extension: authoring pipeline + item cache.]
+Teacher daily workflow; educator trust
+6 — Identity + Social
+IdentityQuest (3 circles, 12 types), GroupProjects, WritingRubric
+Key differentiator; after core loop is stable
+7 — Family
+CaregiverProfile, WeeklyDigest emails, ParentDashboard
+Important for pilot; not a launch blocker
+8 — Pilot Metrics
+PilotReadinessDashboard, TeacherEvaluation, ReliabilityMetric, PhaseReadinessSnapshot
+Admin/program layer; build last
+
+
+
+15. Standards framework reference [from PDR]
+Georgia GSE (ELAGSE): ELAGSE{grade}{strand}{number} (e.g. ELAGSE6RL2); HS banded ELAGSE9-10RL1. Strands RF RL RI W L SL RH RST WHST. Rubric 06: ≥80% priority standards at alignment ≥4.
+CCSS: CCSS.ELA-LITERACY.RL.6.2; StandardCrosswalk maps GSE ↔ CCSS.
+Science of Reading pillars: phonological_awareness, phonemic_awareness, phonics, syllable_types, morphology, fluency.
+Durable Skills (America Succeeds, 10): communication, collaboration, critical_thinking, creativity, leadership, problem_solving, adaptability, growth_mindset, self_awareness, empathy.
+2025 K-12 ELA Standards: see §5.1 (adopt as primary per the §5 recommendation).
+
+
+16. Improvement opportunities [from PDR]
+Performance: pre-generate + cache LLM exercises per skill (background job); Supabase materialized views for heatmap aggregates; service worker + offline mode for low-bandwidth schools.
+Better adaptive logic: full CAT with pre-calibrated AdaptiveItem bank; SM-2 spaced repetition; multi-dimensional IRT (θ per strand).
+Richer writing: real-time AI writing coach (stream GPT-4o); automated rubric scoring via LLM evaluator; Whisper STT for oral projects.
+Teacher UX: auto TeacherAlert via Supabase Edge Function triggers; export roster heatmap as PDF; bulk-assign interventions.
+Engagement: opt-in class leaderboard; music/beat generation rewards; PWA push for streaks.
+Compliance: FERPA data isolation; COPPA parental-consent flow (under-13); per-student data export (portability).
+
+
+17. Success metrics
+Primary gate = the six pilot rubrics (§2.1). Supporting metrics: standards coverage (% of 2025 leaves with ≥1 validated skill, target 100%/live grade), catalog depth (≥ N validated items per skill per difficulty band), placement accuracy vs external benchmark, median SmartScore gain/week, % on-track vs 1.5 RIT-pts/week, AI scoring agreement with human review, weekly return rate, crash-free %, teacher trust ≥ 4.0.
+
+
+18. Open questions
+Standards version (§5) — adopt 2025 K-12 ELA Standards as primary, or stay on GSE for pilot reporting? (Recommendation: adopt 2025 + crosswalk.)
+SmartScore formula — replicate IXL behavior, or publish our own scoring curve (clearer for teachers, avoids mimicking proprietary IP)?
+Catalog target — lock at the ~1,200 IXL-plan backbone, or extend to the PDR's ~2,000+ before launch?
+Items per skill (N) — minimum item count per skill/band that gates a grade going live.
+Migration cutover — big-bang from Base44, or run both in parallel during the K-5 phase?
+Authoring ownership — who staffs the human-review queue, and at what throughput, to hit full K-12 coverage?
+
+
+19. References
+Uploaded: Alphabet AI — Product Design Reference (PDR) v1.0, June 2026 (data model, routes, feature specs, IRT engine code, design system, integrations, build order — source for all [from PDR] sections).
+Uploaded: Georgia K-12 ELA Standards IXL Skill Plans, grades K-12 (13 PDFs) — 2025 strand architecture (F/L/T), code grammar, ~1,200 granular skill alignments (catalog seed, §5-6).
+IXL — How does the SmartScore work? (80 = proficient, 90 = Challenge Zone, 100 = mastery). https://www.ixl.com/help-center/article/1272663/how_does_the_smartscore_work
+IXL SmartScore Guide (PDF). https://www.ixl.com/materials/SmartScore_Guide.pdf
+Existing system: Alphabet AI Base44 app (6958a13f5cd77c4eabd5441c), 59-entity data model.
+
