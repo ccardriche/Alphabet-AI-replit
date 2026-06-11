@@ -128,9 +128,10 @@ export default function TeacherDashboard() {
         </div>
 
         {/* Quick nav */}
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Class Roster & Heatmap", desc: "Student performance by standard", href: "/teacher/roster", icon: TrendingUp },
+            { label: "Class Analytics", desc: "Charts, trends & skill gaps", href: "/teacher/analytics", icon: TrendingUp },
+            { label: "Class Roster & Heatmap", desc: "Student performance by standard", href: "/teacher/roster", icon: Users },
             { label: "Book Upload", desc: "Generate lessons from texts", href: "/teacher/book-upload", icon: BookOpen },
             { label: "Exercise Generator", desc: "Create AI practice sets", href: "/teacher/exercises", icon: Users },
           ].map(({ label, desc, href, icon: Icon }) => (

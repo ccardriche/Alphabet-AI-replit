@@ -963,7 +963,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/StudentAnalytics"
 
-  /analytics/class/{classId}:
+  /teacher/analytics/{classId}:
     get:
       operationId: getClassAnalytics
       tags: [analytics]
@@ -2145,20 +2145,71 @@ components:
 
     ClassAnalytics:
       type: object
-      required: [classId, avgScore, onTrackPct, interventionPct, domainAverages]
+      required: [classId, totalStudents, avgScore, onTrackPct, interventionPct, notTestedPct, domainAverages, masteryDistribution, skillsNeedingAttention, scoreDistribution]
       properties:
         classId:
           type: string
+        totalStudents:
+          type: integer
         avgScore:
           type: number
         onTrackPct:
           type: number
         interventionPct:
           type: number
+        notTestedPct:
+          type: number
         domainAverages:
           type: array
           items:
             $ref: "#/components/schemas/DomainScore"
+        masteryDistribution:
+          type: array
+          items:
+            $ref: "#/components/schemas/MasteryBucket"
+        skillsNeedingAttention:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillAttention"
+        scoreDistribution:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoreBucket"
+
+    MasteryBucket:
+      type: object
+      required: [level, count, pct]
+      properties:
+        level:
+          type: string
+        count:
+          type: integer
+        pct:
+          type: number
+
+    SkillAttention:
+      type: object
+      required: [skillCode, skillName, domain, avgScore, studentCount]
+      properties:
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        domain:
+          type: string
+        avgScore:
+          type: number
+        studentCount:
+          type: integer
+
+    ScoreBucket:
+      type: object
+      required: [bucket, count]
+      properties:
+        bucket:
+          type: string
+        count:
+          type: integer
 
   parameters:
     AuthorizationSessionHeader:

@@ -200,14 +200,93 @@ router.get("/teacher/analytics/:classId", requireTeacher, async (req, res) => {
   if (!cls) return res.status(404).json({ error: "Class not found" });
 
   const enrollments = await db.select({ studentId: classEnrollmentsTable.studentId })
-    .from(classEnrollmentsTable)
-    .where(eq(classEnrollmentsTable.classId, cls.id));
+    .from(classEnrollmentsTable).where(eq(classEnrollmentsTable.classId, cls.id));
+  const studentIds = enrollments.map((e) => e.studentId);
+
+  const empty = {
+    classId: cls.id, totalStudents: 0, avgScore: 0,
+    onTrackPct: 0, interventionPct: 0, notTestedPct: 100,
+    domainAverages: [], masteryDistribution: [], skillsNeedingAttention: [], scoreDistribution: [],
+  };
+  if (studentIds.length === 0) return res.json(empty);
+
+  const students = await db.select().from(studentProfilesTable)
+    .where(inArray(studentProfilesTable.id, studentIds));
+
+  const allMastery = await Promise.all(students.map((s) =>
+    db.select().from(skillMasteryTable).where(eq(skillMasteryTable.studentId, s.id)).limit(200)
+  ));
+
+  const domains = ["RL", "RI", "RF", "W", "SL", "L"];
+  let onTrack = 0, intervention = 0, notTested = 0;
+  const studentAvgs: number[] = [];
+
+  for (let i = 0; i < students.length; i++) {
+    const s = students[i];
+    const mastery = allMastery[i];
+    if (!s.preAssessmentCompleted) { notTested++; continue; }
+    const avg = mastery.length > 0 ? mastery.reduce((sum, m) => sum + m.smartScore, 0) / mastery.length : 0;
+    studentAvgs.push(avg);
+    if (avg >= 70) onTrack++; else intervention++;
+  }
+
+  const total = students.length;
+  const avgScore = studentAvgs.length > 0 ? studentAvgs.reduce((s, a) => s + a, 0) / studentAvgs.length : 0;
+  const flatMastery = allMastery.flat();
+
+  const domainAverages = domains.map((code) => {
+    const dm = flatMastery.filter((m) => m.domain === code);
+    return { domainCode: code, score: dm.length > 0 ? Math.round(dm.reduce((s, m) => s + m.smartScore, 0) / dm.length) : 0 };
+  });
+
+  const masteryDistribution = [
+    { level: "Advanced",   min: 87,  max: 101 },
+    { level: "Proficient", min: 70,  max: 87  },
+    { level: "Developing", min: 50,  max: 70  },
+    { level: "Foundation", min: 0,   max: 50  },
+  ].map(({ level, min, max }) => {
+    const count = studentAvgs.filter((a) => a >= min && a < max).length;
+    return { level, count, pct: total > 0 ? Math.round((count / total) * 100) : 0 };
+  });
+
+  const scoreDistribution = [
+    { bucket: "0–40",   min: 0,  max: 40  },
+    { bucket: "40–60",  min: 40, max: 60  },
+    { bucket: "60–75",  min: 60, max: 75  },
+    { bucket: "75–87",  min: 75, max: 87  },
+    { bucket: "87–100", min: 87, max: 101 },
+  ].map(({ bucket, min, max }) => ({
+    bucket,
+    count: studentAvgs.filter((a) => a >= min && a < max).length,
+  }));
+
+  const skillMap = new Map<string, { scores: number[]; name: string; domain: string }>();
+  for (const m of flatMastery) {
+    if (!skillMap.has(m.skillCode)) skillMap.set(m.skillCode, { scores: [], name: (m as any).skillName ?? m.skillCode, domain: m.domain ?? "" });
+    skillMap.get(m.skillCode)!.scores.push(m.smartScore);
+  }
+  const skillsNeedingAttention = Array.from(skillMap.entries())
+    .map(([skillCode, v]) => ({
+      skillCode,
+      skillName: v.name,
+      domain: v.domain,
+      avgScore: Math.round(v.scores.reduce((s, a) => s + a, 0) / v.scores.length),
+      studentCount: v.scores.length,
+    }))
+    .sort((a, b) => a.avgScore - b.avgScore)
+    .slice(0, 6);
 
   return res.json({
-    classId: req.params.classId,
-    totalStudents: enrollments.length,
-    avgSmartScore: 0,
-    growthRate: 0,
+    classId: cls.id,
+    totalStudents: total,
+    avgScore: Math.round(avgScore),
+    onTrackPct: total > 0 ? Math.round((onTrack / total) * 100) : 0,
+    interventionPct: total > 0 ? Math.round((intervention / total) * 100) : 0,
+    notTestedPct: total > 0 ? Math.round((notTested / total) * 100) : 0,
+    domainAverages,
+    masteryDistribution,
+    skillsNeedingAttention,
+    scoreDistribution,
   });
 });
 

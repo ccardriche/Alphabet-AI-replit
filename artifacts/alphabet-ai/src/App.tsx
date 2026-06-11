@@ -16,6 +16,7 @@ import TeacherDashboard from "@/pages/TeacherDashboard";
 import TeacherRoster from "@/pages/TeacherRoster";
 import BookUpload from "@/pages/BookUpload";
 import ExerciseGenerator from "@/pages/ExerciseGenerator";
+import ClassAnalytics from "@/pages/ClassAnalytics";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,6 +81,9 @@ function Router() {
       </Route>
       <Route path="/teacher/exercises">
         <AuthGuard><ExerciseGenerator /></AuthGuard>
+      </Route>
+      <Route path="/teacher/analytics">
+        <AuthGuard><ClassAnalytics /></AuthGuard>
       </Route>
       <Route component={NotFound} />
     </Switch>

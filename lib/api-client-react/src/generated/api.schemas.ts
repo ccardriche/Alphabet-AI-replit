@@ -746,12 +746,36 @@ export interface StudentAnalytics {
   onTrack?: boolean;
 }
 
+export interface MasteryBucket {
+  level: string;
+  count: number;
+  pct: number;
+}
+
+export interface SkillAttention {
+  skillCode: string;
+  skillName: string;
+  domain: string;
+  avgScore: number;
+  studentCount: number;
+}
+
+export interface ScoreBucket {
+  bucket: string;
+  count: number;
+}
+
 export interface ClassAnalytics {
   classId: string;
+  totalStudents: number;
   avgScore: number;
   onTrackPct: number;
   interventionPct: number;
+  notTestedPct: number;
   domainAverages: DomainScore[];
+  masteryDistribution: MasteryBucket[];
+  skillsNeedingAttention: SkillAttention[];
+  scoreDistribution: ScoreBucket[];
 }
 
 /**

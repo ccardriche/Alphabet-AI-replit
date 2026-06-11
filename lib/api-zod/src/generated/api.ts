@@ -1121,12 +1121,30 @@ export const GetClassAnalyticsParams = zod.object({
 
 export const GetClassAnalyticsResponse = zod.object({
   "classId": zod.string(),
+  "totalStudents": zod.number(),
   "avgScore": zod.number(),
   "onTrackPct": zod.number(),
   "interventionPct": zod.number(),
+  "notTestedPct": zod.number(),
   "domainAverages": zod.array(zod.object({
   "domainCode": zod.string(),
   "score": zod.number()
+})),
+  "masteryDistribution": zod.array(zod.object({
+  "level": zod.string(),
+  "count": zod.number(),
+  "pct": zod.number()
+})),
+  "skillsNeedingAttention": zod.array(zod.object({
+  "skillCode": zod.string(),
+  "skillName": zod.string(),
+  "domain": zod.string(),
+  "avgScore": zod.number(),
+  "studentCount": zod.number()
+})),
+  "scoreDistribution": zod.array(zod.object({
+  "bucket": zod.string(),
+  "count": zod.number()
 }))
 })
 

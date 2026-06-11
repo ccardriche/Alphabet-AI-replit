@@ -6,11 +6,19 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DomainScore } from './domainScore';
+import type { MasteryBucket } from './masteryBucket';
+import type { ScoreBucket } from './scoreBucket';
+import type { SkillAttention } from './skillAttention';
 
 export interface ClassAnalytics {
   classId: string;
+  totalStudents: number;
   avgScore: number;
   onTrackPct: number;
   interventionPct: number;
+  notTestedPct: number;
   domainAverages: DomainScore[];
+  masteryDistribution: MasteryBucket[];
+  skillsNeedingAttention: SkillAttention[];
+  scoreDistribution: ScoreBucket[];
 }

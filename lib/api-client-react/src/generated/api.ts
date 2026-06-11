@@ -3877,7 +3877,7 @@ export const getGetClassAnalyticsUrl = (classId: string,) => {
 
 
 
-  return `/api/analytics/class/${classId}`
+  return `/api/teacher/analytics/${classId}`
 }
 
 /**
@@ -3900,7 +3900,7 @@ export const getClassAnalytics = async (classId: string, options?: RequestInit):
 
 export const getGetClassAnalyticsQueryKey = (classId: string,) => {
     return [
-    `/api/analytics/class/${classId}`
+    `/api/teacher/analytics/${classId}`
     ] as const;
     }
 
