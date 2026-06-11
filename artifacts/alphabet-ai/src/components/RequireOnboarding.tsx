@@ -22,7 +22,9 @@ export default function RequireOnboarding({ children }: { children: React.ReactN
         localStorage.setItem(STUDENT_ID_KEY, (profile as any).id);
       }
     } else {
-      setLocation("/onboarding");
+      // Profile exists but placement not done → send to placement.
+      // No profile at all → send to onboarding.
+      setLocation(profile ? "/placement" : "/onboarding");
     }
   }, [isLoading, isComplete, profile, setLocation]);
 
