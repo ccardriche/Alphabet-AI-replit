@@ -5,7 +5,7 @@ import {
   useListMastery,
   getGetSkillTreeQueryKey,
 } from "@workspace/api-client-react";
-import { Search, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -128,6 +128,9 @@ export default function SkillTree() {
                               <p className="text-sm font-medium truncate">{skill.skillName}</p>
                               <p className="text-xs text-muted-foreground">{skill.skillCode}</p>
                             </div>
+                            {level === "mastered" && (
+                              <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" aria-label="Mastered" />
+                            )}
                             <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shrink-0", MASTERY_COLORS[level] ?? "bg-gray-200 text-gray-600")}>
                               {MASTERY_LABELS[level] ?? level}
                             </span>

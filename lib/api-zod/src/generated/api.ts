@@ -245,6 +245,7 @@ export const GetStudentDashboardResponse = zod.object({
 })),
   "streakDays": zod.number(),
   "totalXp": zod.number(),
+  "completedSessionCount": zod.number().optional(),
   "nextSkills": zod.array(zod.object({
   "skillCode": zod.string(),
   "skillName": zod.string(),
@@ -278,7 +279,7 @@ export const GetStudentDashboardResponse = zod.object({
 
 
 /**
- * @summary Get student progress over time
+ * @summary Get student progress over time (grade, weekly XP, mastery timeline)
  */
 export const GetStudentProgressResponse = zod.object({
   "weeklyXp": zod.array(zod.object({
@@ -295,6 +296,34 @@ export const GetStudentProgressResponse = zod.object({
   "currentEstimatedGrade": zod.string().nullable()
 })
 })
+
+
+/**
+ * @summary Get XP earned per day for the last 7 days
+ */
+export const GetWeeklyXpResponseItem = zod.object({
+  "day": zod.string().describe('Short day label (e.g. \"Mon\")'),
+  "date": zod.string().optional().describe('ISO date string (YYYY-MM-DD)'),
+  "xp": zod.number()
+})
+export const GetWeeklyXpResponse = zod.array(GetWeeklyXpResponseItem)
+
+
+/**
+ * @summary Get mastery milestone events ordered by date (when each skill was mastered)
+ */
+export const GetMasteryTimelineResponseItem = zod.object({
+  "date": zod.string().describe('Display date string from lastUpdated (e.g. \"Jun 5\")'),
+  "isoDate": zod.string().optional().describe('ISO date string from lastUpdated for sorting'),
+  "skillCode": zod.string(),
+  "skillName": zod.string(),
+  "domain": zod.string().nullish(),
+  "level": zod.enum(['not_started', 'introduced', 'practicing', 'approaching', 'mastered']).describe('Current mastery level of the skill'),
+  "firstSeen": zod.string().optional().describe('ISO date when the skill was first practiced (createdAt)'),
+  "lastUpdated": zod.string().optional().describe('ISO date when the skill was last updated'),
+  "masteredCount": zod.number().optional().describe('Running cumulative count of mastered skills up to this event (only present for mastered-level events)')
+})
+export const GetMasteryTimelineResponse = zod.array(GetMasteryTimelineResponseItem)
 
 
 /**

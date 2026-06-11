@@ -223,6 +223,7 @@ export interface StudentDashboard {
   recentMastery: SkillMastery[];
   streakDays: number;
   totalXp: number;
+  completedSessionCount?: number;
   nextSkills: ElaSkill[];
   domainProgress?: DomainProgress[];
 }
@@ -249,6 +250,47 @@ export interface StudentProgress {
   weeklyXp: WeeklyXp[];
   masteryTimeline: MasteryTimelinePoint[];
   gradeProgress: GradeProgress;
+}
+
+export interface DailyXp {
+  /** Short day label (e.g. "Mon") */
+  day: string;
+  /** ISO date string (YYYY-MM-DD) */
+  date?: string;
+  xp: number;
+}
+
+/**
+ * Current mastery level of the skill
+ */
+export type MasteryEventLevel = typeof MasteryEventLevel[keyof typeof MasteryEventLevel];
+
+
+export const MasteryEventLevel = {
+  not_started: 'not_started',
+  introduced: 'introduced',
+  practicing: 'practicing',
+  approaching: 'approaching',
+  mastered: 'mastered',
+} as const;
+
+export interface MasteryEvent {
+  /** Display date string from lastUpdated (e.g. "Jun 5") */
+  date: string;
+  /** ISO date string from lastUpdated for sorting */
+  isoDate?: string;
+  skillCode: string;
+  skillName: string;
+  /** @nullable */
+  domain?: string | null;
+  /** Current mastery level of the skill */
+  level: MasteryEventLevel;
+  /** ISO date when the skill was first practiced (createdAt) */
+  firstSeen?: string;
+  /** ISO date when the skill was last updated */
+  lastUpdated?: string;
+  /** Running cumulative count of mastered skills up to this event (only present for mastered-level events) */
+  masteredCount?: number;
 }
 
 export interface SkillDomain {

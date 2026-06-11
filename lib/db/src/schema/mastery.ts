@@ -20,6 +20,7 @@ export const skillMasteryTable = pgTable("skill_mastery", {
   isUnlocked: boolean("is_unlocked").notNull().default(true),
   sequenceOrder: integer("sequence_order").notNull().default(0),
   lastPracticed: timestamp("last_practiced", { withTimezone: true }),
+  masteredAt: timestamp("mastered_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({

@@ -1,20 +1,75 @@
 import { useLocation } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   useGetStudentDashboard,
-  getGetStudentDashboardQueryKey,
+  useGetMasterySummary,
 } from "@workspace/api-client-react";
-import { Zap, Flame, Trophy, BookOpen, ArrowRight, TrendingUp } from "lucide-react";
+import { Zap, Flame, Trophy, BookOpen, ArrowRight, TrendingUp, Lock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import Layout from "@/components/Layout";
 import MasteryBadge from "@/components/MasteryBadge";
-import { DOMAIN_COLORS, DOMAIN_LABELS } from "@/lib/constants";
+import { DOMAIN_COLORS } from "@/lib/constants";
+
+// ── Badge definitions ────────────────────────────────────────────────────────
+interface BadgeStats {
+  totalXp: number;
+  streak: number;
+  masteredSkills: number;
+  practiceCount: number;
+}
+
+interface BadgeDef {
+  id: string;
+  icon: string;
+  title: string;
+  desc: string;
+  check: (s: BadgeStats) => boolean;
+}
+
+const BADGES: BadgeDef[] = [
+  { id: "first_practice", icon: "🌟", title: "First Steps", desc: "Complete your first practice question", check: (s) => s.practiceCount > 0 },
+  { id: "xp_50", icon: "⚡", title: "XP Spark", desc: "Earn 50 XP", check: (s) => s.totalXp >= 50 },
+  { id: "xp_200", icon: "💎", title: "XP Collector", desc: "Earn 200 XP", check: (s) => s.totalXp >= 200 },
+  { id: "xp_500", icon: "👑", title: "XP Master", desc: "Earn 500 XP", check: (s) => s.totalXp >= 500 },
+  { id: "streak_3", icon: "🔥", title: "On Fire", desc: "3-day streak", check: (s) => s.streak >= 3 },
+  { id: "streak_7", icon: "🌈", title: "Week Warrior", desc: "7-day streak", check: (s) => s.streak >= 7 },
+  { id: "skills_1", icon: "🎯", title: "First Mastery", desc: "Master your first skill", check: (s) => s.masteredSkills >= 1 },
+  { id: "skills_5", icon: "🏅", title: "Skill Builder", desc: "Master 5 skills", check: (s) => s.masteredSkills >= 5 },
+  { id: "skills_10", icon: "🏆", title: "Champion", desc: "Master 10 skills", check: (s) => s.masteredSkills >= 10 },
+];
+
+function FlameIcon({ streak }: { streak: number }) {
+  const isHot = streak >= 3;
+  return (
+    <div className="relative">
+      <motion.div
+        animate={isHot ? {
+          scale: [1, 1.15, 1, 1.1, 1],
+          rotate: [-3, 3, -2, 2, 0],
+        } : {}}
+        transition={isHot ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" } : {}}
+      >
+        <Flame
+          className={`w-5 h-5 transition-colors duration-300 ${isHot ? "text-orange-500 drop-shadow-sm" : "text-amber-400"}`}
+        />
+      </motion.div>
+      {isHot && (
+        <motion.div
+          className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-yellow-300"
+          animate={{ opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.2, repeat: Infinity, delay: 0.3 }}
+        />
+      )}
+    </div>
+  );
+}
 
 export default function StudentDashboard() {
   const [, setLocation] = useLocation();
   const { data, isLoading } = useGetStudentDashboard();
+  const { data: summary } = useGetMasterySummary();
 
   if (isLoading) return (
     <Layout>
@@ -29,13 +84,30 @@ export default function StudentDashboard() {
   const domainProgress = data?.domainProgress ?? [];
   const nextSkills = data?.nextSkills ?? [];
   const recentMastery = data?.recentMastery ?? [];
+  const streak = data?.streakDays ?? 0;
+  const totalXp = data?.totalXp ?? 0;
+  const masteredSkills = summary?.masteredSkills ?? 0;
+  const practicedToday = (todayStats?.questionsAnswered ?? 0) > 0;
+
+  // Use the real completed session count returned by the dashboard endpoint
+  const completedSessionCount = (data as any)?.completedSessionCount ?? 0;
+
+  const badgeStats: BadgeStats = {
+    totalXp,
+    streak,
+    masteredSkills,
+    practiceCount: completedSessionCount,
+  };
+
+  const earnedBadges = BADGES.filter((b) => b.check(badgeStats));
+  const lockedBadges = BADGES.filter((b) => !b.check(badgeStats));
 
   return (
     <Layout>
       <div className="p-6 max-w-5xl mx-auto space-y-6">
         {/* Greeting */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h1 className="text-2xl font-bold text-foreground">
                 Welcome back{profile?.displayName ? `, ${profile.displayName}` : ""}!
@@ -45,11 +117,28 @@ export default function StudentDashboard() {
                 {profile?.diagnosedGradeLevel ? ` · Reading at ${profile.diagnosedGradeLevel}` : ""}
               </p>
             </div>
-            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">
-              <Flame className="w-5 h-5 text-amber-500" />
-              <div>
-                <p className="text-xs text-amber-600">Streak</p>
-                <p className="text-lg font-bold text-amber-700">{data?.streakDays ?? 0} days</p>
+            <div className="flex items-center gap-3">
+              {/* Streak nudge */}
+              <AnimatePresence>
+                {streak > 0 && !practicedToday && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    className="hidden sm:flex items-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-700 rounded-xl px-3 py-1.5 text-xs font-medium"
+                  >
+                    <Flame className="w-3.5 h-3.5 text-orange-500" />
+                    Keep your streak! Practice today
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {/* Streak counter */}
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">
+                <FlameIcon streak={streak} />
+                <div>
+                  <p className="text-xs text-amber-600">Streak</p>
+                  <p className="text-lg font-bold text-amber-700">{streak} {streak === 1 ? "day" : "days"}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -59,9 +148,17 @@ export default function StudentDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: "Questions Today", value: todayStats?.questionsAnswered ?? 0, icon: BookOpen, color: "text-blue-600", bg: "bg-blue-50" },
-            { label: "Correct Answers", value: todayStats?.correctAnswers ?? 0, icon: Trophy, color: "text-green-600", bg: "bg-green-50" },
+            {
+              label: "Correct Rate",
+              value: (todayStats?.questionsAnswered ?? 0) > 0
+                ? `${Math.round(((todayStats?.correctAnswers ?? 0) / todayStats!.questionsAnswered!) * 100)}%`
+                : "—",
+              icon: Trophy,
+              color: "text-green-600",
+              bg: "bg-green-50",
+            },
             { label: "XP Today", value: todayStats?.xpEarned ?? 0, icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
-            { label: "Total XP", value: data?.totalXp ?? 0, icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50" },
+            { label: "Total XP", value: totalXp, icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50" },
           ].map(({ label, value, icon: Icon, color, bg }, i) => (
             <motion.div
               key={label}
@@ -103,8 +200,14 @@ export default function StudentDashboard() {
           <Card className="border-0 shadow-sm bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold mb-1">Ready for today's practice?</h2>
-                <p className="text-indigo-100 text-sm">5 adaptive activities personalized just for you.</p>
+                <h2 className="text-lg font-bold mb-1">
+                  {practicedToday ? "Great work today! Keep going?" : "Ready for today's practice?"}
+                </h2>
+                <p className="text-indigo-100 text-sm">
+                  {practicedToday
+                    ? `${todayStats?.questionsAnswered} questions done · ${todayStats?.xpEarned} XP earned`
+                    : "5 adaptive activities personalized just for you."}
+                </p>
               </div>
               <Button
                 onClick={() => setLocation("/practice")}
@@ -136,12 +239,18 @@ export default function StudentDashboard() {
                         <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
                         <span className="text-sm font-medium">{d.domain}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">{d.masteredCount}/{d.totalCount}</span>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>Avg: {d.avgScore}</span>
+                        <span>{d.masteredCount}/{d.totalCount}</span>
+                      </div>
                     </div>
                     <div className="h-2 rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${pct}%`, backgroundColor: color }}
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.7, ease: "easeOut" }}
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: color }}
                       />
                     </div>
                   </div>
@@ -184,6 +293,45 @@ export default function StudentDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Badges */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Badges</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {earnedBadges.length === 0 && (
+              <p className="text-sm text-muted-foreground mb-3">Start practicing to earn your first badge!</p>
+            )}
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+              {earnedBadges.map((badge, i) => (
+                <motion.div
+                  key={badge.id}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.06, type: "spring", stiffness: 200 }}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-gradient-to-b from-amber-50 to-yellow-50 border border-amber-200 text-center"
+                  title={badge.desc}
+                >
+                  <span className="text-2xl">{badge.icon}</span>
+                  <p className="text-xs font-semibold text-amber-800 leading-tight">{badge.title}</p>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                </motion.div>
+              ))}
+              {lockedBadges.slice(0, Math.max(0, 9 - earnedBadges.length)).map((badge) => (
+                <div
+                  key={badge.id}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-gray-50 border border-gray-200 text-center opacity-50"
+                  title={badge.desc}
+                >
+                  <span className="text-2xl grayscale">{badge.icon}</span>
+                  <p className="text-xs font-medium text-gray-500 leading-tight">{badge.title}</p>
+                  <Lock className="w-3 h-3 text-gray-400" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Recent Mastery */}
         {recentMastery.length > 0 && (

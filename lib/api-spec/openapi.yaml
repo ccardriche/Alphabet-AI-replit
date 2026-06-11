@@ -259,7 +259,7 @@ paths:
     get:
       operationId: getStudentProgress
       tags: [students]
-      summary: Get student progress over time
+      summary: Get student progress over time (grade, weekly XP, mastery timeline)
       responses:
         "200":
           description: Progress data
@@ -267,6 +267,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StudentProgress"
+
+  /students/progress/weekly-xp:
+    get:
+      operationId: getWeeklyXp
+      tags: [students]
+      summary: Get XP earned per day for the last 7 days
+      responses:
+        "200":
+          description: Daily XP breakdown for the past 7 days
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyXp"
+
+  /students/progress/timeline:
+    get:
+      operationId: getMasteryTimeline
+      tags: [students]
+      summary: Get mastery milestone events ordered by date (when each skill was mastered)
+      responses:
+        "200":
+          description: Ordered list of mastery events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MasteryEvent"
 
   # ── ELA SKILL CATALOG ──────────────────────────────────────────────────────
   /skills:
@@ -1087,6 +1117,8 @@ components:
           type: integer
         totalXp:
           type: integer
+        completedSessionCount:
+          type: integer
         nextSkills:
           type: array
           items:
@@ -1147,6 +1179,49 @@ components:
           type: string
         xp:
           type: integer
+
+    DailyXp:
+      type: object
+      required: [day, xp]
+      properties:
+        day:
+          type: string
+          description: Short day label (e.g. "Mon")
+        date:
+          type: string
+          description: ISO date string (YYYY-MM-DD)
+        xp:
+          type: integer
+
+    MasteryEvent:
+      type: object
+      required: [date, skillCode, skillName, level]
+      properties:
+        date:
+          type: string
+          description: Display date string from lastUpdated (e.g. "Jun 5")
+        isoDate:
+          type: string
+          description: ISO date string from lastUpdated for sorting
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        domain:
+          type: ["string", "null"]
+        level:
+          type: string
+          enum: [not_started, introduced, practicing, approaching, mastered]
+          description: Current mastery level of the skill
+        firstSeen:
+          type: string
+          description: ISO date when the skill was first practiced (createdAt)
+        lastUpdated:
+          type: string
+          description: ISO date when the skill was last updated
+        masteredCount:
+          type: integer
+          description: Running cumulative count of mastered skills up to this event (only present for mastered-level events)
 
     MasteryTimelinePoint:
       type: object

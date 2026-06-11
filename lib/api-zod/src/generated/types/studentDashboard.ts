@@ -17,6 +17,7 @@ export interface StudentDashboard {
   recentMastery: SkillMastery[];
   streakDays: number;
   totalXp: number;
+  completedSessionCount?: number;
   nextSkills: ElaSkill[];
   domainProgress?: DomainProgress[];
 }

@@ -29,6 +29,7 @@ import type {
   ClassAnalytics,
   ClassHeatmap,
   CompleteSessionInput,
+  DailyXp,
   ElaSkill,
   ExerciseGenerateInput,
   GetSkillTreeParams,
@@ -40,6 +41,7 @@ import type {
   ListMasteryParams,
   ListSkillsParams,
   LogoutSuccess,
+  MasteryEvent,
   MasterySummary,
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
@@ -1076,7 +1078,7 @@ export const getGetStudentProgressUrl = () => {
 }
 
 /**
- * @summary Get student progress over time
+ * @summary Get student progress over time (grade, weekly XP, mastery timeline)
  */
 export const getStudentProgress = async ( options?: RequestInit): Promise<StudentProgress> => {
 
@@ -1123,7 +1125,7 @@ export type GetStudentProgressQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get student progress over time
+ * @summary Get student progress over time (grade, weekly XP, mastery timeline)
  */
 
 export function useGetStudentProgress<TData = Awaited<ReturnType<typeof getStudentProgress>>, TError = ErrorType<unknown>>(
@@ -1132,6 +1134,160 @@ export function useGetStudentProgress<TData = Awaited<ReturnType<typeof getStude
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetStudentProgressQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetWeeklyXpUrl = () => {
+
+
+
+
+  return `/api/students/progress/weekly-xp`
+}
+
+/**
+ * @summary Get XP earned per day for the last 7 days
+ */
+export const getWeeklyXp = async ( options?: RequestInit): Promise<DailyXp[]> => {
+
+  return customFetch<DailyXp[]>(getGetWeeklyXpUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWeeklyXpQueryKey = () => {
+    return [
+    `/api/students/progress/weekly-xp`
+    ] as const;
+    }
+
+
+export const getGetWeeklyXpQueryOptions = <TData = Awaited<ReturnType<typeof getWeeklyXp>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWeeklyXp>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWeeklyXpQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWeeklyXp>>> = ({ signal }) => getWeeklyXp({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWeeklyXp>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWeeklyXpQueryResult = NonNullable<Awaited<ReturnType<typeof getWeeklyXp>>>
+export type GetWeeklyXpQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get XP earned per day for the last 7 days
+ */
+
+export function useGetWeeklyXp<TData = Awaited<ReturnType<typeof getWeeklyXp>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWeeklyXp>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWeeklyXpQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetMasteryTimelineUrl = () => {
+
+
+
+
+  return `/api/students/progress/timeline`
+}
+
+/**
+ * @summary Get mastery milestone events ordered by date (when each skill was mastered)
+ */
+export const getMasteryTimeline = async ( options?: RequestInit): Promise<MasteryEvent[]> => {
+
+  return customFetch<MasteryEvent[]>(getGetMasteryTimelineUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMasteryTimelineQueryKey = () => {
+    return [
+    `/api/students/progress/timeline`
+    ] as const;
+    }
+
+
+export const getGetMasteryTimelineQueryOptions = <TData = Awaited<ReturnType<typeof getMasteryTimeline>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMasteryTimeline>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMasteryTimelineQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMasteryTimeline>>> = ({ signal }) => getMasteryTimeline({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMasteryTimeline>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMasteryTimelineQueryResult = NonNullable<Awaited<ReturnType<typeof getMasteryTimeline>>>
+export type GetMasteryTimelineQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get mastery milestone events ordered by date (when each skill was mastered)
+ */
+
+export function useGetMasteryTimeline<TData = Awaited<ReturnType<typeof getMasteryTimeline>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMasteryTimeline>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMasteryTimelineQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

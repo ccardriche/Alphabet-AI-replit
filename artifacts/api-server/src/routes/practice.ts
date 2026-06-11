@@ -6,7 +6,7 @@ import {
   skillMasteryTable,
   elaSkillsTable,
 } from "@workspace/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
 import {
   eapUpdate,
   selectNextItem,
@@ -99,12 +99,10 @@ router.get("/practice/:sessionId/next", async (req, res) => {
     .where(eq(elaSkillsTable.active, true))
     .limit(200);
 
-  // Filter by focus domain if set
   const domainSkills = session.focusDomain
     ? allSkills.filter((s) => s.domainCode === session.focusDomain || s.domain === session.focusDomain)
     : allSkills;
 
-  // Select target skill: prioritise in-progress skills (not mastered), lowest smartScore first
   let targetSkill: typeof allSkills[0] | undefined;
   const practicing = masteryRows
     .filter((m) => m.masteryLevel !== "mastered")
@@ -123,12 +121,10 @@ router.get("/practice/:sessionId/next", async (req, res) => {
 
   if (!targetSkill) return res.status(400).json({ error: "No skills available" });
 
-  // Get the current theta for this skill from mastery record (or default 0)
   const mastery = masteryRows.find((m) => m.skillCode === targetSkill!.skillCode);
   const skillTheta = mastery?.theta ?? 0;
   const skillSe = mastery?.thetaSe ?? 999;
 
-  // MFI item selection: find the best item calibration within this skill's difficulty range
   const candidates: ItemCandidate[] = [
     {
       skillCode: targetSkill.skillCode,
@@ -139,7 +135,6 @@ router.get("/practice/:sessionId/next", async (req, res) => {
   ];
   const selected = selectNextItem(skillTheta, candidates) ?? candidates[0];
 
-  // Activity type cycles through pedagogical sequence
   const activityType = ACTIVITY_SEQUENCE[session.activitiesCompleted % ACTIVITY_SEQUENCE.length];
 
   const question = await generateQuestion({
@@ -190,12 +185,10 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
     .limit(1))[0];
   if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
-  // IRT parameters from request (returned by /next endpoint)
   const a: number = irt?.a ?? 1.0;
   const b: number = irt?.b ?? 0;
   const c: number = irt?.c ?? 0.25;
 
-  // Load current skill mastery (for existing theta prior)
   const existingMastery = (await db
     .select()
     .from(skillMasteryTable)
@@ -208,7 +201,6 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
     .where(eq(elaSkillsTable.skillCode, skillCode))
     .limit(1))[0];
 
-  // Update theta using EAP single-step update (Bayesian posterior update)
   const currentTheta = existingMastery?.theta ?? 0;
   const currentSe = existingMastery?.thetaSe ?? 999;
   const resp: IrtResponse = { a, b, c, correct };
@@ -222,6 +214,11 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
   const newConsecutiveErrors = correct ? 0 : (existingMastery?.consecutiveErrors ?? 0) + 1;
   const needsReteaching = !correct && newConsecutiveErrors >= 2;
 
+  // Set masteredAt only once — when the skill first transitions into "mastered"
+  const justMastered =
+    newMasteryLevel === "mastered" &&
+    (!existingMastery || existingMastery.masteryLevel !== "mastered");
+
   if (existingMastery) {
     await db.update(skillMasteryTable).set({
       theta: newTheta,
@@ -234,6 +231,8 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
       consecutiveErrors: newConsecutiveErrors,
       needsReteaching,
       lastPracticed: new Date(),
+      // Only stamp masteredAt when transitioning into mastered for the first time
+      ...(justMastered ? { masteredAt: new Date() } : {}),
     }).where(eq(skillMasteryTable.id, existingMastery.id));
   } else {
     await db.insert(skillMasteryTable).values({
@@ -250,12 +249,12 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
       correctCount: correct ? 1 : 0,
       consecutiveErrors: correct ? 0 : 1,
       needsReteaching: !correct,
+      masteredAt: newMasteryLevel === "mastered" ? new Date() : undefined,
     });
   }
 
   const xpEarned = correct ? 10 : 2;
 
-  // Append answer to session history
   const prevAnswers = (session.answers as any[]) ?? [];
   const newAnswer = { questionId, skillCode, correct, timeSpentSeconds, irt: { a, b, c } };
 
@@ -314,9 +313,44 @@ router.post("/practice/:sessionId/complete", async (req, res) => {
 
   const student = await getStudentByUserId(req.user!.id);
   if (student) {
+    // Find the last 2 completed sessions (the current one + the prior one) to determine streak.
+    // Since we just marked this session complete above, the most recent result is the current session.
+    const prevCompletedSessions = await db
+      .select({ completedAt: practiceSessionsTable.completedAt })
+      .from(practiceSessionsTable)
+      .where(and(
+        eq(practiceSessionsTable.studentId, session.studentId),
+        eq(practiceSessionsTable.status, "completed"),
+      ))
+      .orderBy(desc(practiceSessionsTable.completedAt))
+      .limit(2);
+
     const now = new Date();
-    const hoursSince = (now.getTime() - student.updatedAt.getTime()) / (1000 * 60 * 60);
-    const newStreak = hoursSince < 48 ? student.currentStreak + 1 : 1;
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+    // The first result is the session we just completed; the second is the prior one
+    const lastPractice = prevCompletedSessions.length > 1
+      ? prevCompletedSessions[1].completedAt
+      : null;
+
+    let newStreak: number;
+    if (!lastPractice) {
+      // First ever session
+      newStreak = 1;
+    } else if (lastPractice >= todayStart) {
+      // Already practiced today earlier — keep the streak, don't double-count
+      newStreak = student.currentStreak;
+    } else if (lastPractice >= yesterdayStart) {
+      // Practiced yesterday — extend the streak
+      newStreak = student.currentStreak + 1;
+    } else {
+      // Gap of more than 1 day — reset
+      newStreak = 1;
+    }
+
     await db.update(studentProfilesTable).set({
       currentStreak: newStreak,
     }).where(eq(studentProfilesTable.id, student.id));
