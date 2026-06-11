@@ -7,7 +7,6 @@ import {
   elaSkillsTable,
 } from "@workspace/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { generateQuestion, makeMockQuestion } from "./placement";
 import {
   eapUpdate,
   selectNextItem,
@@ -16,8 +15,22 @@ import {
   type IrtResponse,
   type ItemCandidate,
 } from "@workspace/irt-engine";
+import { generateQuestion } from "../services/questionGenerator";
 
 const router = Router();
+
+const ACTIVITY_SEQUENCE = [
+  "listen_repeat",
+  "see_tap",
+  "multiple_choice",
+  "fill_blank",
+  "multiple_choice",
+  "short_answer",
+  "multiple_choice",
+  "read_it",
+  "write_it",
+  "multiple_choice",
+] as const;
 
 function requireAuth(req: any, res: any): boolean {
   if (!req.isAuthenticated()) {
@@ -116,7 +129,6 @@ router.get("/practice/:sessionId/next", async (req, res) => {
   const skillSe = mastery?.thetaSe ?? 999;
 
   // MFI item selection: find the best item calibration within this skill's difficulty range
-  // For a single skill, we select a difficulty close to targetSkill.difficulty but use MFI
   const candidates: ItemCandidate[] = [
     {
       skillCode: targetSkill.skillCode,
@@ -127,21 +139,21 @@ router.get("/practice/:sessionId/next", async (req, res) => {
   ];
   const selected = selectNextItem(skillTheta, candidates) ?? candidates[0];
 
-  let question;
-  try {
-    question = await generateQuestion({
-      skillCode: targetSkill.skillCode,
-      skillName: targetSkill.skillName,
-      domain: targetSkill.domain,
-      gradeLevel: targetSkill.gradeLevel,
-      difficulty: selected.b,
-      interests: student?.interests ?? [],
-      culturalContext: student?.culturalContext ?? [],
-      activityType: "multiple_choice",
-    });
-  } catch {
-    question = makeMockQuestion(targetSkill);
-  }
+  // Activity type cycles through pedagogical sequence
+  const activityType = ACTIVITY_SEQUENCE[session.activitiesCompleted % ACTIVITY_SEQUENCE.length];
+
+  const question = await generateQuestion({
+    skillCode: targetSkill.skillCode,
+    skillName: targetSkill.skillName,
+    domain: targetSkill.domain,
+    gradeLevel: targetSkill.gradeLevel,
+    difficulty: selected.b,
+    interests: student?.interests ?? [],
+    culturalContext: student?.culturalContext ?? [],
+    activityType,
+    mode: "practice",
+    studentTheta: skillTheta,
+  });
 
   return res.json({
     sessionId,
@@ -149,7 +161,7 @@ router.get("/practice/:sessionId/next", async (req, res) => {
     skillName: targetSkill.skillName,
     domain: targetSkill.domain,
     domainCode: targetSkill.domainCode,
-    activityType: "multiple_choice",
+    activityType,
     question,
     irt: { a: selected.a, b: selected.b, c: selected.c },
     currentSkillTheta: skillTheta,

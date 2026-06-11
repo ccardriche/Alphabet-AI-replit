@@ -3,3 +3,4 @@
 - [Vite workspace lib resolution](vite-workspace-libs.md) — workspace libs need explicit alias + fs.allow for lib directory in vite.config.ts
 - [IRT engine architecture](irt-engine.md) — 3-PL EAP+MFI CAT in lib/irt-engine; placement uses full-history EAP, practice uses single-step eapUpdate; theta/thetaSe on skill_mastery table
 - [Post-login routing](post-login-routing.md) — Landing.tsx fetches /api/me then /api/students/profile; no auto-redirect until role chosen; handleRole → PUT /api/me → /onboarding (student) or /teacher
+- [Generated file deduplication](generated-file-dedup.md) — api-zod and api-client-react had double-codegen duplicates; fix by slicing out the first partial copy

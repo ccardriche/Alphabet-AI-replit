@@ -4,10 +4,8 @@ import {
   placementSessionsTable,
   elaSkillsTable,
   studentProfilesTable,
-  skillMasteryTable,
 } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-import OpenAI from "openai";
 import {
   eapEstimate,
   selectNextItem,
@@ -17,13 +15,12 @@ import {
   type IrtResponse,
   type ItemCandidate,
 } from "@workspace/irt-engine";
+import { generateQuestion, getFallbackQuestion, makeMockQuestion } from "../services/questionGenerator";
+
+export type { AdaptiveQuestion } from "../services/questionGenerator";
+export { generateQuestion, getFallbackQuestion, makeMockQuestion };
 
 const router = Router();
-
-const openai = new OpenAI({
-  baseURL: process.env.OPENAI_API_BASE_URL ?? "https://api.openai.com/v1",
-  apiKey: process.env.OPENAI_API_KEY ?? "sk-placeholder",
-});
 
 function requireAuth(req: any, res: any): boolean {
   if (!req.isAuthenticated()) {
@@ -110,21 +107,18 @@ router.get("/placement/:sessionId/next", async (req, res) => {
   const targetSkill = allSkills.find((s) => s.skillCode === targetCandidate.skillCode)!;
   const student = await getStudentByUserId(req.user!.id);
 
-  let question;
-  try {
-    question = await generateQuestion({
-      skillCode: targetSkill.skillCode,
-      skillName: targetSkill.skillName,
-      domain: targetSkill.domain,
-      gradeLevel: targetSkill.gradeLevel,
-      difficulty: targetSkill.difficulty,
-      interests: student?.interests ?? [],
-      culturalContext: student?.culturalContext ?? [],
-      activityType: "multiple_choice",
-    });
-  } catch {
-    question = makeMockQuestion(targetSkill);
-  }
+  const question = await generateQuestion({
+    skillCode: targetSkill.skillCode,
+    skillName: targetSkill.skillName,
+    domain: targetSkill.domain,
+    gradeLevel: targetSkill.gradeLevel,
+    difficulty: targetSkill.difficulty,
+    interests: student?.interests ?? [],
+    culturalContext: student?.culturalContext ?? [],
+    activityType: "multiple_choice",
+    mode: "placement",
+    studentTheta: session.theta,
+  });
 
   return res.json({
     ...question,
@@ -242,87 +236,5 @@ router.get("/placement/:sessionId/result", async (req, res) => {
 
   return res.json(session);
 });
-
-// ---------------------------------------------------------------------------
-// Question generation
-// ---------------------------------------------------------------------------
-
-export async function generateQuestion(params: {
-  skillCode: string;
-  skillName: string;
-  domain: string;
-  gradeLevel: string;
-  difficulty: number;
-  interests: string[];
-  culturalContext: string[];
-  activityType: string;
-}) {
-  const { skillCode, skillName, domain, gradeLevel, difficulty, interests, culturalContext } = params;
-
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `You are an expert ELA question writer. Create a single multiple-choice question for a ${gradeLevel} student on the skill "${skillName}" (${domain}). The question difficulty is ${difficulty.toFixed(2)} (IRT b-parameter, range -3 to 3). Student interests: ${interests.join(", ") || "general"}. Cultural context: ${culturalContext.join(", ") || "diverse"}. Return valid JSON only.`,
-      },
-      {
-        role: "user",
-        content: `Generate a multiple-choice question. JSON format:
-{
-  "id": "q_${Date.now()}",
-  "skillCode": "${skillCode}",
-  "skillName": "${skillName}",
-  "domain": "${domain}",
-  "questionText": "...",
-  "passage": "... (optional, include for reading comprehension)",
-  "activityType": "multiple_choice",
-  "options": [
-    {"id": "a", "text": "..."},
-    {"id": "b", "text": "..."},
-    {"id": "c", "text": "..."},
-    {"id": "d", "text": "..."}
-  ],
-  "correctOptionId": "a",
-  "explanation": "Brief explanation of the correct answer",
-  "difficulty": ${difficulty}
-}
-Only include "passage" if relevant to the question. Make the question culturally relevant to student interests.`,
-      },
-    ],
-    response_format: { type: "json_object" },
-    max_tokens: 600,
-  });
-
-  const raw = completion.choices[0].message.content ?? "{}";
-  return JSON.parse(raw);
-}
-
-export function makeMockQuestion(skill: {
-  skillCode: string;
-  skillName: string;
-  domain: string;
-  domainCode: string;
-  gradeLevel: string;
-  difficulty: number;
-}) {
-  return {
-    id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    skillCode: skill.skillCode,
-    skillName: skill.skillName,
-    domain: skill.domain,
-    questionText: `Which best demonstrates understanding of ${skill.skillName}?`,
-    activityType: "multiple_choice",
-    options: [
-      { id: "a", text: "Option A — the correct answer" },
-      { id: "b", text: "Option B — plausible distractor" },
-      { id: "c", text: "Option C — plausible distractor" },
-      { id: "d", text: "Option D — plausible distractor" },
-    ],
-    correctOptionId: "a",
-    explanation: `This tests ${skill.skillName} at the ${skill.gradeLevel} level.`,
-    difficulty: skill.difficulty,
-  };
-}
 
 export default router;

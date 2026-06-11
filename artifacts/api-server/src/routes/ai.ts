@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { requireTeacher } from "../middlewares/requireTeacher";
 import { getSession, getSessionId, updateSession } from "../lib/auth";
+import { generateQuestion, generateExerciseWorksheet } from "../services/questionGenerator";
 
 const router = Router();
 
@@ -105,114 +106,49 @@ router.get("/lessons", requireTeacher, async (req, res) => {
 // POST /api/llm/question
 router.post("/llm/question", async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-  const { skillCode, gradeLevel, activityType, interests, culturalContext, homeLanguage, theta } = req.body;
+  const { skillCode, gradeLevel, activityType, interests, culturalContext, theta } = req.body;
   if (!skillCode || !gradeLevel || !activityType) {
     return res.status(400).json({ error: "skillCode, gradeLevel, and activityType are required" });
   }
 
-  const [skill] = await db.select().from(elaSkillsTable).where(
-    (await import("drizzle-orm")).eq(elaSkillsTable.skillCode, skillCode)
-  ).limit(1);
+  const [skill] = await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.skillCode, skillCode)).limit(1);
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert ELA question writer creating ${activityType} activities for grade ${gradeLevel} students. Skill: ${skill?.skillName ?? skillCode}. Interests: ${(interests ?? []).join(", ") || "general"}. Return valid JSON only.`,
-        },
-        {
-          role: "user",
-          content: `Generate a single ${activityType} question. JSON:
-{
-  "id": "q_${Date.now()}",
-  "skillCode": "${skillCode}",
-  "skillName": "${skill?.skillName ?? skillCode}",
-  "domain": "${skill?.domain ?? "ELA"}",
-  "questionText": "...",
-  "activityType": "${activityType}",
-  "options": [{"id": "a", "text": "..."}, {"id": "b", "text": "..."}, {"id": "c", "text": "..."}, {"id": "d", "text": "..."}],
-  "correctOptionId": "a",
-  "explanation": "...",
-  "difficulty": ${theta ?? 0}
-}`,
-        },
-      ],
-      response_format: { type: "json_object" },
-      max_tokens: 500,
-    });
-    return res.json(JSON.parse(completion.choices[0].message.content ?? "{}"));
-  } catch {
-    return res.json({
-      id: `q_${Date.now()}`,
-      skillCode,
-      skillName: skill?.skillName ?? skillCode,
-      domain: skill?.domain ?? "ELA",
-      questionText: `What best demonstrates ${skill?.skillName ?? skillCode}?`,
-      activityType,
-      options: [
-        { id: "a", text: "Correct answer" },
-        { id: "b", text: "Distractor B" },
-        { id: "c", text: "Distractor C" },
-        { id: "d", text: "Distractor D" },
-      ],
-      correctOptionId: "a",
-      explanation: `This tests ${skill?.skillName ?? skillCode}.`,
-      difficulty: theta ?? 0,
-    });
-  }
+  const question = await generateQuestion({
+    skillCode,
+    skillName: skill?.skillName ?? skillCode,
+    domain: skill?.domain ?? "ELA",
+    gradeLevel,
+    difficulty: skill?.difficulty ?? (theta ?? 0),
+    interests: interests ?? [],
+    culturalContext: culturalContext ?? [],
+    activityType,
+    mode: "practice",
+    studentTheta: theta ?? undefined,
+  });
+
+  return res.json(question);
 });
 
-// POST /api/llm/exercise
+// POST /api/llm/exercise — generates a structured worksheet with answer key
 router.post("/llm/exercise", async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-  const { skillCode, gradeLevel, count = 5, interests } = req.body;
+  const { skillCode, gradeLevel, count = 5, interests, culturalContext } = req.body;
   if (!skillCode || !gradeLevel) return res.status(400).json({ error: "skillCode and gradeLevel required" });
 
-  const [skill] = await db.select().from(elaSkillsTable).where(
-    (await import("drizzle-orm")).eq(elaSkillsTable.skillCode, skillCode)
-  ).limit(1);
+  const [skill] = await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.skillCode, skillCode)).limit(1);
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert ELA teacher. Create ${count} practice questions for grade ${gradeLevel} on skill: ${skill?.skillName ?? skillCode}. Return a JSON array.`,
-        },
-        {
-          role: "user",
-          content: `Generate ${count} multiple-choice questions. Interests: ${(interests ?? []).join(", ") || "general"}. Return JSON array where each item has: id, skillCode, skillName, domain, questionText, passage (optional), activityType, options [{id, text}], correctOptionId, explanation, difficulty (number).`,
-        },
-      ],
-      response_format: { type: "json_object" },
-      max_tokens: 2000,
-    });
-    const parsed = JSON.parse(completion.choices[0].message.content ?? "{}");
-    const questions = Array.isArray(parsed) ? parsed : (parsed.questions ?? parsed.exercises ?? []);
-    return res.json(questions);
-  } catch {
-    const questions = Array.from({ length: count }, (_, i) => ({
-      id: `q_${Date.now()}_${i}`,
-      skillCode,
-      skillName: skill?.skillName ?? skillCode,
-      domain: skill?.domain ?? "ELA",
-      questionText: `Question ${i + 1} testing ${skill?.skillName ?? skillCode}`,
-      activityType: "multiple_choice",
-      options: [
-        { id: "a", text: "Correct answer" },
-        { id: "b", text: "Distractor B" },
-        { id: "c", text: "Distractor C" },
-        { id: "d", text: "Distractor D" },
-      ],
-      correctOptionId: "a",
-      explanation: `This tests ${skill?.skillName ?? skillCode}.`,
-      difficulty: 0,
-    }));
-    return res.json(questions);
-  }
+  const worksheet = await generateExerciseWorksheet({
+    skillCode,
+    skillName: skill?.skillName ?? skillCode,
+    domain: skill?.domain ?? "ELA",
+    gradeLevel,
+    difficulty: skill?.difficulty ?? 0,
+    count: Number(count),
+    interests: interests ?? [],
+    culturalContext: culturalContext ?? [],
+  });
+
+  return res.json(worksheet.questions);
 });
 
 // POST /api/tts

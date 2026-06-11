@@ -5,3 +5,4 @@ export * from "./skills";
 export * from "./mastery";
 export * from "./sessions";
 export * from "./teacher";
+export * from "./question-cache";

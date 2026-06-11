@@ -508,7 +508,7 @@ export const exchangeMobileAuthorizationCode = async (mobileTokenExchangeRequest
 
 
 
-export const getExchangeMobileAuthorizationCodeMutationOptions = <TError = ErrorType<void>,
+export const getExchangeMobileAuthorizationCodeMutationOptions = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exchangeMobileAuthorizationCode>>, TError,{data: BodyType<MobileTokenExchangeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof exchangeMobileAuthorizationCode>>, TError,{data: BodyType<MobileTokenExchangeRequest>}, TContext> => {
 
@@ -537,12 +537,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ExchangeMobileAuthorizationCodeMutationResult = NonNullable<Awaited<ReturnType<typeof exchangeMobileAuthorizationCode>>>
     export type ExchangeMobileAuthorizationCodeMutationBody = BodyType<MobileTokenExchangeRequest>
-    export type ExchangeMobileAuthorizationCodeMutationError = ErrorType<void>
+    export type ExchangeMobileAuthorizationCodeMutationError = ErrorType<unknown>
 
     /**
  * @summary Exchange a mobile OIDC code for a session token
  */
-export const useExchangeMobileAuthorizationCode = <TError = ErrorType<void>,
+export const useExchangeMobileAuthorizationCode = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exchangeMobileAuthorizationCode>>, TError,{data: BodyType<MobileTokenExchangeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof exchangeMobileAuthorizationCode>>,
@@ -624,8 +624,6 @@ export const useLogoutMobileSession = <TError = ErrorType<unknown>,
     }
 
 export const getGetMeUrl = () => {
-
-
 
 
   return `/api/auth/me`
