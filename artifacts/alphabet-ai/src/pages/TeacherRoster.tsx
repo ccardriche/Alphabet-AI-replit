@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { DOMAIN_COLORS, HEATMAP_COLOR } from "@/lib/constants";
 import Layout from "@/components/Layout";
+import { useSelectedClass } from "@/contexts/SelectedClassContext";
 
 const FILTERS = ["All", "On Track", "Intervention", "Not Tested"] as const;
 type Filter = typeof FILTERS[number];
@@ -21,7 +22,7 @@ type Filter = typeof FILTERS[number];
 export default function TeacherRoster() {
   const [, setLocation] = useLocation();
   const [filter, setFilter] = useState<Filter>("All");
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const { selectedClassId, setSelectedClassId } = useSelectedClass();
 
   const { data: classes, isLoading: classesLoading } = useListTeacherClasses();
 

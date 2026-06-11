@@ -12,9 +12,11 @@ import {
 import { ArrowLeft, Users, TrendingUp, CheckCircle, AlertTriangle, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { DOMAIN_COLORS, HEATMAP_COLOR } from "@/lib/constants";
 import Layout from "@/components/Layout";
+import { useSelectedClass } from "@/contexts/SelectedClassContext";
 
 const MASTERY_COLORS: Record<string, string> = {
   Advanced:   "#4f46e5",
@@ -30,18 +32,22 @@ const DOMAIN_FULL: Record<string, string> = {
 
 export default function ClassAnalytics() {
   const [, setLocation] = useLocation();
-  const { data: classes } = useListTeacherClasses();
-  const classId = classes?.[0]?.id ?? "";
-  const className = classes?.[0]?.className ?? "My Class";
+  const { data: classes, isLoading: classesLoading } = useListTeacherClasses();
+  const { selectedClassId, setSelectedClassId } = useSelectedClass();
 
-  const { data, isLoading } = useGetClassAnalytics(classId, {
+  const classId = selectedClassId ?? classes?.[0]?.id ?? "";
+  const activeClass = (classes ?? []).find((c) => c.id === classId) ?? classes?.[0] ?? null;
+
+  const { data, isLoading: analyticsLoading } = useGetClassAnalytics(classId, {
     query: {
       queryKey: getGetClassAnalyticsQueryKey(classId),
       enabled: !!classId,
     },
   });
 
-  if (isLoading || !classId) return (
+  const isLoading = classesLoading || (!!classId && analyticsLoading);
+
+  if (isLoading) return (
     <Layout>
       <div className="p-6 space-y-4">
         {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
@@ -79,9 +85,31 @@ export default function ClassAnalytics() {
           </button>
           <div>
             <h1 className="text-2xl font-bold">Class Analytics</h1>
-            <p className="text-sm text-muted-foreground">{className} · {data?.totalStudents ?? 0} students</p>
+            <p className="text-sm text-muted-foreground">{activeClass?.className ?? "My Class"} · {data?.totalStudents ?? 0} students</p>
           </div>
         </motion.div>
+
+        {/* Class selector — only shown when teacher has more than one class */}
+        {(classes?.length ?? 0) > 1 && (
+          <div>
+            <Select
+              value={classId}
+              onValueChange={(v) => setSelectedClassId(v)}
+            >
+              <SelectTrigger className="w-72" data-testid="select-class-analytics">
+                <SelectValue placeholder="Select a class" />
+              </SelectTrigger>
+              <SelectContent>
+                {(classes ?? []).map((cls) => (
+                  <SelectItem key={cls.id} value={cls.id}>
+                    {cls.className} · Grade {cls.gradeLevel}
+                    {(cls.studentCount ?? 0) > 0 && ` · ${cls.studentCount} students`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

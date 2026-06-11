@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@workspace/replit-auth-web";
 import { ErrorBoundary, FullPageErrorBoundary } from "@/components/ErrorBoundary";
 import RequireOnboarding from "@/components/RequireOnboarding";
+import { SelectedClassProvider } from "@/contexts/SelectedClassContext";
 
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Landing = lazy(() => import("@/pages/Landing"));
@@ -224,10 +225,12 @@ function App() {
     <FullPageErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
+          <SelectedClassProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </SelectedClassProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </FullPageErrorBoundary>

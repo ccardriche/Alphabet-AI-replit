@@ -16,6 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import type { GroupProject, ProjectGroupWithMembers } from "@workspace/api-client-react";
 import Layout from "@/components/Layout";
+import { useSelectedClass } from "@/contexts/SelectedClassContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Plus, PenLine, BookOpen, Search, MessageCircle, ChevronRight,
   Users, Check, X, AlertCircle, Loader2, FolderOpen, Calendar,
-  Star, MessageSquare,
+  Star, MessageSquare, GraduationCap,
 } from "lucide-react";
 
 const TYPE_META: Record<string, { icon: React.ElementType; color: string; label: string }> = {
@@ -72,7 +73,8 @@ export default function TeacherProjects() {
     query: { queryKey: getGetTeacherProjectQueryKey(selectedId ?? ""), enabled: !!selectedId },
   });
   const { data: classes = [] } = useListTeacherClasses();
-  const classId = (classes as any[])[0]?.id ?? "";
+  const { selectedClassId, setSelectedClassId } = useSelectedClass();
+  const classId = selectedClassId ?? (classes as any[])[0]?.id ?? "";
   const { data: students = [] } = useListClassStudents(classId, {
     query: { queryKey: getListClassStudentsQueryKey(classId), enabled: !!classId },
   });
@@ -137,11 +139,31 @@ export default function TeacherProjects() {
       <div className="flex h-full min-h-screen">
         {/* LEFT: project list */}
         <aside className="w-72 shrink-0 border-r border-border bg-background flex flex-col">
-          <div className="p-4 border-b border-border flex items-center justify-between">
-            <h2 className="font-semibold text-sm">Group Projects</h2>
-            <Button size="sm" className="gap-1.5 h-7 text-xs" onClick={() => { setPanel("new-project"); }}>
-              <Plus className="w-3 h-3" /> New
-            </Button>
+          <div className="p-4 border-b border-border space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-sm">Group Projects</h2>
+              <Button size="sm" className="gap-1.5 h-7 text-xs" onClick={() => { setPanel("new-project"); }}>
+                <Plus className="w-3 h-3" /> New
+              </Button>
+            </div>
+            {(classes as any[]).length > 1 && (
+              <Select
+                value={classId}
+                onValueChange={(v) => setSelectedClassId(v)}
+              >
+                <SelectTrigger className="h-8 text-xs w-full" data-testid="select-class-projects">
+                  <GraduationCap className="w-3.5 h-3.5 mr-1.5 shrink-0 text-muted-foreground" />
+                  <SelectValue placeholder="Select a class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(classes as any[]).map((cls: any) => (
+                    <SelectItem key={cls.id} value={cls.id} className="text-xs">
+                      {cls.className}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {isLoading && (
