@@ -14,6 +14,8 @@ import {
   getGetStudentProfileQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Avatar } from "@/components/Avatar";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 const studentNav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -39,12 +41,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const nav = role === "teacher" ? teacherNav : studentNav;
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { displayName } = useCurrentUser();
 
   const { data: profile } = useGetStudentProfile();
   const updateProfile = useUpdateStudentProfile();
   const [togglingAudio, setTogglingAudio] = useState(false);
 
   const audioEnabled = (profile as any)?.audioEnabled !== false;
+
+  const userLabel = displayName ?? (role === "teacher" ? "Teacher" : role === "student" ? "Student" : "You");
+  const roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
 
   async function handleToggleAudio() {
     if (togglingAudio) return;
@@ -75,7 +81,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <div>
               <span className="font-bold text-sidebar-foreground text-sm">Alphabet AI</span>
-              <p className="text-xs text-muted-foreground capitalize">{role}</p>
+              <p className="text-xs text-muted-foreground capitalize">{roleLabel}</p>
             </div>
           </div>
         </div>
@@ -120,6 +126,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </button>
           )}
 
+          {/* User identity row */}
+          <div className="flex items-center gap-2 px-3 py-2">
+            <Avatar name={userLabel} size="sm" />
+            <span className="text-sm font-medium text-sidebar-foreground truncate">{userLabel}</span>
+          </div>
+
           <Button
             variant="ghost"
             size="sm"
@@ -143,20 +155,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <span className="font-bold text-sm">Alphabet AI</span>
           </div>
-          {role === "student" && profile && (
-            <button
-              onClick={handleToggleAudio}
-              disabled={togglingAudio}
-              aria-label={audioEnabled ? "Disable read aloud" : "Enable read aloud"}
-              className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {audioEnabled ? (
-                <Volume2 className="w-4 h-4 text-indigo-500" />
-              ) : (
-                <VolumeX className="w-4 h-4" />
-              )}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {role === "student" && profile && (
+              <button
+                onClick={handleToggleAudio}
+                disabled={togglingAudio}
+                aria-label={audioEnabled ? "Disable read aloud" : "Enable read aloud"}
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {audioEnabled ? (
+                  <Volume2 className="w-4 h-4 text-indigo-500" />
+                ) : (
+                  <VolumeX className="w-4 h-4" />
+                )}
+              </button>
+            )}
+            <div className="flex items-center gap-1.5">
+              <Avatar name={userLabel} size="sm" />
+              <span className="text-sm font-medium truncate max-w-[100px]">{userLabel}</span>
+            </div>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto">

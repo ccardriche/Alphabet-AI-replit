@@ -131,3 +131,4 @@ export const AVATAR_OPTIONS = [
 export const ROLE_KEY = "alphabet_ai_role";
 export const STUDENT_ID_KEY = "alphabet_ai_student_id";
 export const PLACEMENT_COMPLETED_KEY = "alphabet_ai_placement_done";
+export const DISPLAY_NAME_KEY = "alphabet_ai_display_name";

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { GRADE_OPTIONS, INTEREST_OPTIONS, STUDENT_ID_KEY } from "@/lib/constants";
+import { GRADE_OPTIONS, INTEREST_OPTIONS, STUDENT_ID_KEY, DISPLAY_NAME_KEY } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 
 const schema = z.object({
@@ -92,6 +92,7 @@ export default function Onboarding() {
       });
 
       localStorage.setItem(STUDENT_ID_KEY, profile.id);
+      localStorage.setItem(DISPLAY_NAME_KEY, data.displayName);
 
       // Attempt class join after profile creation (best effort)
       if (classCode.trim() && classJoinStatus !== "joined") {
