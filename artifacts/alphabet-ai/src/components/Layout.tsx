@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { getRole, clearRole } from "@/lib/role";
+import { useToast } from "@/hooks/use-toast";
 import {
   LayoutDashboard, GitBranch, Zap, TrendingUp,
   Users, Upload, Dumbbell, LogOut, GraduationCap, AlertTriangle, Volume2, VolumeX,
@@ -34,6 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const nav = role === "teacher" ? teacherNav : studentNav;
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: profile } = useGetStudentProfile();
   const updateProfile = useUpdateStudentProfile();
@@ -48,7 +50,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       await updateProfile.mutateAsync({ data: { audioEnabled: !audioEnabled } as any });
       queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey() });
     } catch {
-      // silently ignore
+      toast({ title: "Could not update audio setting — try again.", variant: "destructive" });
     } finally {
       setTogglingAudio(false);
     }
@@ -166,7 +168,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               onClick={() => setLocation(href)}
               className={cn(
                 "flex-1 flex flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors",
-                location === href ? "text-primary" : "text-muted-foreground"
+                location === href || location.startsWith(href + "/") ? "text-primary" : "text-muted-foreground"
               )}
             >
               <Icon className="w-4 h-4" />

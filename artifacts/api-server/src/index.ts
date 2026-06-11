@@ -1,18 +1,22 @@
+const requiredEnvVars = ["DATABASE_URL", "REPL_ID", "SESSION_SECRET", "PORT"] as const;
+
+for (const key of requiredEnvVars) {
+  if (!process.env[key]) {
+    console.error(`FATAL: Required environment variable "${key}" is not set.`);
+    console.error("Set it in the Replit Secrets panel and restart the server.");
+    process.exit(1);
+  }
+}
+
 import app from "./app";
 import { logger } from "./lib/logger";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
+const rawPort = process.env["PORT"]!;
 const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
+  logger.error({ rawPort }, "Invalid PORT value");
+  process.exit(1);
 }
 
 app.listen(port, (err) => {

@@ -1,28 +1,40 @@
+import { lazy, Suspense } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@workspace/replit-auth-web";
-import NotFound from "@/pages/not-found";
-import Landing from "@/pages/Landing";
-import Onboarding from "@/pages/Onboarding";
-import Placement from "@/pages/Placement";
-import StudentDashboard from "@/pages/StudentDashboard";
-import Practice from "@/pages/Practice";
-import SkillTree from "@/pages/SkillTree";
-import Intervention from "@/pages/Intervention";
-import Progress from "@/pages/Progress";
-import TeacherDashboard from "@/pages/TeacherDashboard";
-import TeacherRoster from "@/pages/TeacherRoster";
-import BookUpload from "@/pages/BookUpload";
-import ExerciseGenerator from "@/pages/ExerciseGenerator";
-import ClassAnalytics from "@/pages/ClassAnalytics";
+import { ErrorBoundary, FullPageErrorBoundary } from "@/components/ErrorBoundary";
+
+const NotFound = lazy(() => import("@/pages/not-found"));
+const Landing = lazy(() => import("@/pages/Landing"));
+const Onboarding = lazy(() => import("@/pages/Onboarding"));
+const Placement = lazy(() => import("@/pages/Placement"));
+const StudentDashboard = lazy(() => import("@/pages/StudentDashboard"));
+const Practice = lazy(() => import("@/pages/Practice"));
+const SkillTree = lazy(() => import("@/pages/SkillTree"));
+const Intervention = lazy(() => import("@/pages/Intervention"));
+const Progress = lazy(() => import("@/pages/Progress"));
+const TeacherDashboard = lazy(() => import("@/pages/TeacherDashboard"));
+const TeacherRoster = lazy(() => import("@/pages/TeacherRoster"));
+const BookUpload = lazy(() => import("@/pages/BookUpload"));
+const ExerciseGenerator = lazy(() => import("@/pages/ExerciseGenerator"));
+const ClassAnalytics = lazy(() => import("@/pages/ClassAnalytics"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, staleTime: 30_000 },
   },
 });
+
+function PageSkeleton() {
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
@@ -47,59 +59,111 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Landing} />
-      <Route path="/onboarding">
-        <AuthGuard><Onboarding /></AuthGuard>
-      </Route>
-      <Route path="/placement">
-        <AuthGuard><Placement /></AuthGuard>
-      </Route>
-      <Route path="/dashboard">
-        <AuthGuard><StudentDashboard /></AuthGuard>
-      </Route>
-      <Route path="/practice">
-        <AuthGuard><Practice /></AuthGuard>
-      </Route>
-      <Route path="/skill-tree">
-        <AuthGuard><SkillTree /></AuthGuard>
-      </Route>
-      <Route path="/intervention">
-        <AuthGuard><Intervention /></AuthGuard>
-      </Route>
-      <Route path="/progress">
-        <AuthGuard><Progress /></AuthGuard>
-      </Route>
-      <Route path="/teacher">
-        <AuthGuard><TeacherDashboard /></AuthGuard>
-      </Route>
-      <Route path="/teacher/roster">
-        <AuthGuard><TeacherRoster /></AuthGuard>
-      </Route>
-      <Route path="/teacher/book-upload">
-        <AuthGuard><BookUpload /></AuthGuard>
-      </Route>
-      <Route path="/teacher/exercises">
-        <AuthGuard><ExerciseGenerator /></AuthGuard>
-      </Route>
-      <Route path="/teacher/analytics">
-        <AuthGuard><ClassAnalytics /></AuthGuard>
-      </Route>
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense fallback={<PageSkeleton />}>
+      <Switch>
+        <Route path="/" component={Landing} />
+        <Route path="/onboarding">
+          <AuthGuard>
+            <ErrorBoundary>
+              <Onboarding />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/placement">
+          <AuthGuard>
+            <ErrorBoundary>
+              <Placement />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/dashboard">
+          <AuthGuard>
+            <ErrorBoundary>
+              <StudentDashboard />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/practice">
+          <AuthGuard>
+            <ErrorBoundary>
+              <Practice />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/skill-tree">
+          <AuthGuard>
+            <ErrorBoundary>
+              <SkillTree />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/intervention">
+          <AuthGuard>
+            <ErrorBoundary>
+              <Intervention />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/progress">
+          <AuthGuard>
+            <ErrorBoundary>
+              <Progress />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/teacher">
+          <AuthGuard>
+            <ErrorBoundary>
+              <TeacherDashboard />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/teacher/roster">
+          <AuthGuard>
+            <ErrorBoundary>
+              <TeacherRoster />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/teacher/book-upload">
+          <AuthGuard>
+            <ErrorBoundary>
+              <BookUpload />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/teacher/exercises">
+          <AuthGuard>
+            <ErrorBoundary>
+              <ExerciseGenerator />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/teacher/analytics">
+          <AuthGuard>
+            <ErrorBoundary>
+              <ClassAnalytics />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <FullPageErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </FullPageErrorBoundary>
   );
 }
 

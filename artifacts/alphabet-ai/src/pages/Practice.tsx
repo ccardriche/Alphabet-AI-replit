@@ -101,7 +101,9 @@ export default function Practice() {
         setPendingBadges(result.newBadges);
         queryClient.invalidateQueries({ queryKey: getGetMyBadgesQueryKey() });
       }
-    } catch {/* swallow */}
+    } catch {
+      toast({ title: "Could not save your answer — check your connection and try again.", variant: "destructive" });
+    }
   }
 
   async function handleNext() {
@@ -126,7 +128,9 @@ export default function Practice() {
       queryClient.invalidateQueries({ queryKey: getGetStudentDashboardQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetMasterySummaryQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetPracticeHistoryQueryKey() });
-    } catch {/* swallow */}
+    } catch {
+      toast({ title: "Could not save session results — your XP will sync next time.", variant: "destructive" });
+    }
     setPhase("complete");
   }
 

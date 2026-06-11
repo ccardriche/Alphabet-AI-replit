@@ -7,6 +7,8 @@
  */
 export interface HealthStatus {
   status: string;
+  db: string;
+  dbLatencyMs?: number;
 }
 
 export interface AuthUser {

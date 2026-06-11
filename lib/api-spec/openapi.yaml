@@ -1024,10 +1024,14 @@ components:
   schemas:
     HealthStatus:
       type: object
-      required: [status]
+      required: [status, db]
       properties:
         status:
           type: string
+        db:
+          type: string
+        dbLatencyMs:
+          type: number
 
     # ── REPLIT AUTH ──────────────────────────────────────────────────────────
     AuthUser:
