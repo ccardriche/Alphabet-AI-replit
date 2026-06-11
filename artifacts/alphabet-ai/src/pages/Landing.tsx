@@ -38,9 +38,10 @@ export default function Landing() {
       const role = sessionStorage.getItem(ROLE_KEY);
       if (role === "teacher") {
         setLocation("/teacher");
-      } else {
+      } else if (role === "student") {
         setLocation("/onboarding");
       }
+      // No role yet → stay on landing to show role-selection UI
     }
   }, [authLoading, isAuthenticated, profileLoading, profile, profileError, setLocation]);
 
@@ -52,7 +53,7 @@ export default function Landing() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role }),
       });
-      setLocation(role === "student" ? "/dashboard" : "/teacher");
+      setLocation(role === "student" ? "/onboarding" : "/teacher");
     } catch (error) {
       console.error("Failed to set role:", error);
     }

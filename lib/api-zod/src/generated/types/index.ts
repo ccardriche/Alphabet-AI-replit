@@ -22,7 +22,6 @@ export * from './domainMasterySummary';
 export * from './domainProgress';
 export * from './domainScore';
 export * from './elaSkill';
-export * from './errorEnvelope';
 export * from './exerciseGenerateInput';
 export * from './getSkillTreeParams';
 export * from './gradeProgress';
