@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useMemo } from "react";
+import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useStartPracticeSession,
@@ -47,6 +47,9 @@ export default function Practice() {
   const [score, setScore] = useState({ correct: 0, total: 0, xp: 0 });
   const [pendingBadges, setPendingBadges] = useState<BadgeStatus[]>([]);
 
+  const search = useSearch();
+  const focusSkillCode = useMemo(() => new URLSearchParams(search).get("skill") ?? undefined, [search]);
+
   const { data: profile } = useGetStudentProfile();
   const audioEnabled = (profile as any)?.audioEnabled !== false;
 
@@ -64,7 +67,7 @@ export default function Practice() {
 
   async function handleStart() {
     try {
-      const session = await startSession.mutateAsync({ data: {} });
+      const session = await startSession.mutateAsync({ data: { focusSkillCode } });
       setSessionId(session.id);
       setActivityNum(0);
       setScore({ correct: 0, total: 0, xp: 0 });
@@ -147,8 +150,18 @@ export default function Practice() {
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mx-auto mb-6">
                     <Zap className="w-8 h-8 text-indigo-600" />
                   </div>
-                  <h1 className="text-2xl font-bold mb-3">Daily Practice</h1>
-                  <p className="text-muted-foreground mb-8">5 adaptive activities personalized to your level. Earn XP for every correct answer!</p>
+                  {focusSkillCode ? (
+                    <>
+                      <p className="text-xs font-medium text-indigo-500 uppercase tracking-wide mb-1">Skill Practice</p>
+                      <h1 className="text-2xl font-bold mb-2">{focusSkillCode}</h1>
+                      <p className="text-muted-foreground mb-8">Targeted practice for this skill. Every question will focus on <span className="font-medium text-foreground">{focusSkillCode}</span> to sharpen your mastery.</p>
+                    </>
+                  ) : (
+                    <>
+                      <h1 className="text-2xl font-bold mb-3">Daily Practice</h1>
+                      <p className="text-muted-foreground mb-8">5 adaptive activities personalized to your level. Earn XP for every correct answer!</p>
+                    </>
+                  )}
                   <div className="grid grid-cols-5 gap-2 mb-8">
                     {["Listen & Repeat", "See & Tap", "Say It", "Write It", "Read It"].map((label, i) => (
                       <div key={label} className="text-center">

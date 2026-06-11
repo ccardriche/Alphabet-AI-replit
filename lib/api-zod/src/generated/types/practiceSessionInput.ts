@@ -8,4 +8,5 @@
 
 export interface PracticeSessionInput {
   focusDomain?: string;
+  focusSkillCode?: string;
 }

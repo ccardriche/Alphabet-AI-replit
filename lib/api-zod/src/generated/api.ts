@@ -625,7 +625,8 @@ export const GetPlacementResultResponse = zod.object({
  * @summary Start a new daily practice session
  */
 export const StartPracticeSessionBody = zod.object({
-  "focusDomain": zod.string().optional()
+  "focusDomain": zod.string().optional(),
+  "focusSkillCode": zod.string().optional()
 })
 
 

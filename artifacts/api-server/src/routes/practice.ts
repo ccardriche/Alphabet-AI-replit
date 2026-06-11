@@ -56,12 +56,13 @@ router.post("/practice/start", async (req, res) => {
   const student = await getStudentByUserId(req.user!.id);
   if (!student) return res.status(404).json({ error: "Student profile not found. Complete onboarding first." });
 
-  const { focusDomain } = req.body as { focusDomain?: string };
+  const { focusDomain, focusSkillCode } = req.body as { focusDomain?: string; focusSkillCode?: string };
 
   const [session] = await db.insert(practiceSessionsTable).values({
     studentId: student.id,
     status: "in_progress",
     focusDomain: focusDomain ?? null,
+    focusSkillCode: focusSkillCode ?? null,
     answers: [],
   }).returning();
 
@@ -99,6 +100,49 @@ router.get("/practice/:sessionId/next", async (req, res) => {
     .from(elaSkillsTable)
     .where(eq(elaSkillsTable.active, true))
     .limit(200);
+
+  // If the session targets a specific skill, pin to that skill
+  if (session.focusSkillCode) {
+    const pinned = allSkills.find((s) => s.skillCode === session.focusSkillCode);
+    if (pinned) {
+      const mastery = masteryRows.find((m) => m.skillCode === pinned.skillCode);
+      const skillTheta = mastery?.theta ?? 0;
+      const skillSe = mastery?.thetaSe ?? 999;
+      const candidates: ItemCandidate[] = [{
+        skillCode: pinned.skillCode,
+        a: pinned.discrimination ?? 1.0,
+        b: pinned.difficulty ?? 0,
+        c: pinned.guessing ?? 0.25,
+      }];
+      const selected = selectNextItem(skillTheta, candidates) ?? candidates[0];
+      const activityType = ACTIVITY_SEQUENCE[session.activitiesCompleted % ACTIVITY_SEQUENCE.length];
+      const question = await generateQuestion({
+        skillCode: pinned.skillCode,
+        skillName: pinned.skillName,
+        domain: pinned.domain,
+        gradeLevel: pinned.gradeLevel,
+        difficulty: selected.b,
+        interests: student?.interests ?? [],
+        culturalContext: student?.culturalContext ?? [],
+        activityType,
+        mode: "practice",
+        studentTheta: skillTheta,
+      });
+      return res.json({
+        sessionId,
+        skillCode: pinned.skillCode,
+        skillName: pinned.skillName,
+        domain: pinned.domain,
+        domainCode: pinned.domainCode,
+        activityType,
+        question,
+        irt: { a: selected.a, b: selected.b, c: selected.c },
+        currentSkillTheta: skillTheta,
+        currentSkillSe: skillSe,
+        currentSkillSmartScore: thetaToSmartScore(skillTheta),
+      });
+    }
+  }
 
   const domainSkills = session.focusDomain
     ? allSkills.filter((s) => s.domainCode === session.focusDomain || s.domain === session.focusDomain)

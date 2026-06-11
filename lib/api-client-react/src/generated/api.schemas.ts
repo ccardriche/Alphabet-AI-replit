@@ -423,6 +423,7 @@ export interface PlacementResult {
 
 export interface PracticeSessionInput {
   focusDomain?: string;
+  focusSkillCode?: string;
 }
 
 export type PracticeSessionStatus = typeof PracticeSessionStatus[keyof typeof PracticeSessionStatus];

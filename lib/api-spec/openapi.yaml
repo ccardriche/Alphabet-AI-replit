@@ -1639,6 +1639,8 @@ components:
       properties:
         focusDomain:
           type: string
+        focusSkillCode:
+          type: string
 
     PracticeSession:
       type: object
