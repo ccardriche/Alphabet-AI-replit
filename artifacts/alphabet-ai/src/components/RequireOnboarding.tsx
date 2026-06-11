@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useGetStudentProfile, getGetStudentProfileQueryKey } from "@workspace/api-client-react";
+import { STUDENT_ID_KEY } from "@/lib/constants";
 
 export default function RequireOnboarding({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
@@ -16,10 +17,14 @@ export default function RequireOnboarding({ children }: { children: React.ReactN
 
   useEffect(() => {
     if (isLoading) return;
-    if (!isComplete) {
+    if (isComplete) {
+      if (!localStorage.getItem(STUDENT_ID_KEY)) {
+        localStorage.setItem(STUDENT_ID_KEY, (profile as any).id);
+      }
+    } else {
       setLocation("/onboarding");
     }
-  }, [isLoading, isComplete, setLocation]);
+  }, [isLoading, isComplete, profile, setLocation]);
 
   if (isLoading) {
     return (
