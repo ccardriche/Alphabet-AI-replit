@@ -1013,6 +1013,8 @@ components:
           enum: [foundation, developing, proficient, advanced, null]
         preAssessmentCompleted:
           type: boolean
+        audioEnabled:
+          type: boolean
         totalXp:
           type: integer
         currentStreak:
@@ -1066,6 +1068,8 @@ components:
           type: string
         readingLevel:
           type: string
+        audioEnabled:
+          type: boolean
 
     StudentDashboard:
       type: object

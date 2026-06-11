@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { DOMAIN_COLORS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
+import TTSButton from "@/components/TTSButton";
 
 const ACTIVITY_LABELS: Record<string, string> = {
   listen_repeat: "Listen & Repeat",
@@ -43,6 +44,8 @@ export default function Practice() {
   const [score, setScore] = useState({ correct: 0, total: 0, xp: 0 });
 
   const { data: profile } = useGetStudentProfile();
+  const audioEnabled = (profile as any)?.audioEnabled !== false;
+
   const startSession = useStartPracticeSession();
   const { data: activity, refetch: refetchActivity } = useGetNextActivity(sessionId, {
     query: {
@@ -87,7 +90,7 @@ export default function Practice() {
           skillCode: (activity as any).skillCode,
         },
       });
-    } catch {/* swallow */ }
+    } catch {/* swallow */}
   }
 
   async function handleNext() {
@@ -117,6 +120,7 @@ export default function Practice() {
   }
 
   const q = (activity as any)?.question;
+  const isListenRepeat = q?.activityType === "listen_repeat";
 
   return (
     <Layout>
@@ -172,11 +176,32 @@ export default function Practice() {
 
                   {q.passage && (
                     <div className="bg-gray-50 rounded-xl p-4 mb-5 text-sm text-gray-700 leading-relaxed border border-gray-100">
-                      {q.passage}
+                      <div className="flex items-start gap-2">
+                        <span className="flex-1">{q.passage}</span>
+                        {audioEnabled && (
+                          <TTSButton
+                            text={q.passage}
+                            autoPlay={isListenRepeat && phase === "activity"}
+                            showReplay={isListenRepeat}
+                          />
+                        )}
+                      </div>
                     </div>
                   )}
 
-                  <h2 className="text-base font-semibold mb-5 leading-snug">{q.questionText}</h2>
+                  <div className="flex items-start gap-2 mb-5">
+                    <h2 className="text-base font-semibold leading-snug flex-1">{q.questionText}</h2>
+                    {audioEnabled && !q.passage && (
+                      <TTSButton
+                        text={q.questionText}
+                        autoPlay={isListenRepeat && phase === "activity" && !q.passage}
+                        showReplay={isListenRepeat}
+                      />
+                    )}
+                    {audioEnabled && q.passage && (
+                      <TTSButton text={q.questionText} />
+                    )}
+                  </div>
 
                   <div className="space-y-2.5">
                     {q.options?.map((opt: { id: string; text: string }) => {

@@ -18,6 +18,7 @@ export const studentProfilesTable = pgTable("student_profiles", {
   interventionTargetGrade: text("intervention_target_grade"),
   placementPathway: text("placement_pathway"),
   preAssessmentCompleted: boolean("pre_assessment_completed").notNull().default(false),
+  audioEnabled: boolean("audio_enabled").notNull().default(true),
   totalXp: integer("total_xp").notNull().default(0),
   currentStreak: integer("current_streak").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

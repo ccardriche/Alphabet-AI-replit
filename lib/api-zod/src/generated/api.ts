@@ -20,7 +20,7 @@ export const HealthCheckResponse = zod.object({
  * @summary Get the currently authenticated user
  */
 export const GetCurrentAuthUserHeader = zod.object({
-  "Authorization": zod.string().optional().describe('Opaque session token — `Bearer <sid>`.')
+  "Authorization": zod.string().optional().describe('Opaque session token — Bearer <sid>.')
 })
 
 export const GetCurrentAuthUserResponse = zod.object({
@@ -39,7 +39,7 @@ export const GetCurrentAuthUserResponse = zod.object({
  * @summary Start the browser OIDC login flow
  */
 export const BeginBrowserLoginQueryParams = zod.object({
-  "returnTo": zod.coerce.string().optional()
+  "returnTo": zod.coerce.string().optional().describe('Relative path to redirect to after login (must start with `\/`). Defaults to `\/`.')
 })
 
 
@@ -49,7 +49,7 @@ export const BeginBrowserLoginQueryParams = zod.object({
 export const HandleBrowserLoginCallbackQueryParams = zod.object({
   "code": zod.coerce.string().optional(),
   "state": zod.coerce.string().optional(),
-  "iss": zod.coerce.string().optional()
+  "iss": zod.coerce.string().url().optional()
 })
 
 
@@ -57,7 +57,7 @@ export const HandleBrowserLoginCallbackQueryParams = zod.object({
  * @summary Clear the session and begin OIDC logout
  */
 export const LogoutBrowserSessionHeader = zod.object({
-  "Authorization": zod.string().optional().describe('Opaque session token — `Bearer <sid>`.')
+  "Authorization": zod.string().optional().describe('Opaque session token — Bearer <sid>.')
 })
 
 
@@ -88,11 +88,40 @@ export const ExchangeMobileAuthorizationCodeResponse = zod.object({
  * @summary Delete a mobile session token
  */
 export const LogoutMobileSessionHeader = zod.object({
-  "Authorization": zod.string().optional().describe('Opaque session token — `Bearer <sid>`.')
+  "Authorization": zod.string().optional().describe('Opaque session token — Bearer <sid>.')
 })
 
 export const LogoutMobileSessionResponse = zod.object({
   "success": zod.boolean()
+})
+
+
+/**
+ * @summary Get current user profile
+ */
+export const GetMeResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "displayName": zod.string().nullish(),
+  "role": zod.enum(['student', 'teacher', 'caregiver', 'admin']),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Update user profile
+ */
+export const UpdateProfileBody = zod.object({
+  "displayName": zod.string().optional(),
+  "role": zod.enum(['student', 'teacher', 'caregiver', 'admin']).optional()
+})
+
+export const UpdateProfileResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "displayName": zod.string().nullish(),
+  "role": zod.enum(['student', 'teacher', 'caregiver', 'admin']),
+  "createdAt": zod.string().optional()
 })
 
 
@@ -113,6 +142,7 @@ export const GetStudentProfileResponse = zod.object({
   "diagnosedGradeLevel": zod.string().nullish(),
   "placementPathway": zod.union([zod.literal('foundation'),zod.literal('developing'),zod.literal('proficient'),zod.literal('advanced'),zod.literal(null)]).nullish(),
   "preAssessmentCompleted": zod.boolean().optional(),
+  "audioEnabled": zod.boolean().optional(),
   "totalXp": zod.number().optional(),
   "currentStreak": zod.number().optional(),
   "createdAt": zod.string().optional()
@@ -144,7 +174,8 @@ export const UpdateStudentProfileBody = zod.object({
   "musicPreference": zod.string().optional(),
   "culturalContext": zod.array(zod.string()).optional(),
   "homeLanguage": zod.string().optional(),
-  "readingLevel": zod.string().optional()
+  "readingLevel": zod.string().optional(),
+  "audioEnabled": zod.boolean().optional()
 })
 
 export const UpdateStudentProfileResponse = zod.object({
@@ -161,6 +192,7 @@ export const UpdateStudentProfileResponse = zod.object({
   "diagnosedGradeLevel": zod.string().nullish(),
   "placementPathway": zod.union([zod.literal('foundation'),zod.literal('developing'),zod.literal('proficient'),zod.literal('advanced'),zod.literal(null)]).nullish(),
   "preAssessmentCompleted": zod.boolean().optional(),
+  "audioEnabled": zod.boolean().optional(),
   "totalXp": zod.number().optional(),
   "currentStreak": zod.number().optional(),
   "createdAt": zod.string().optional()
@@ -185,6 +217,7 @@ export const GetStudentDashboardResponse = zod.object({
   "diagnosedGradeLevel": zod.string().nullish(),
   "placementPathway": zod.union([zod.literal('foundation'),zod.literal('developing'),zod.literal('proficient'),zod.literal('advanced'),zod.literal(null)]).nullish(),
   "preAssessmentCompleted": zod.boolean().optional(),
+  "audioEnabled": zod.boolean().optional(),
   "totalXp": zod.number().optional(),
   "currentStreak": zod.number().optional(),
   "createdAt": zod.string().optional()

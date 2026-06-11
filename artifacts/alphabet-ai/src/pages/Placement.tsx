@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import TTSButton from "@/components/TTSButton";
 
 type Phase = "intro" | "question" | "result";
 
@@ -32,6 +33,8 @@ export default function Placement() {
   const [correct, setCorrect] = useState<boolean | null>(null);
 
   const { data: studentProfile } = useGetStudentProfile();
+  const audioEnabled = (studentProfile as any)?.audioEnabled !== false;
+
   const startPlacement = useStartPlacement();
   const submitAnswer = useSubmitPlacementAnswer();
   const { data: question, refetch: refetchQuestion } = useGetNextPlacementQuestion(sessionId, {
@@ -136,14 +139,24 @@ export default function Placement() {
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                 {(question as any).passage && (
                   <div className="bg-gray-50 rounded-xl p-4 mb-5 text-sm text-gray-700 leading-relaxed border border-gray-100">
-                    {(question as any).passage}
+                    <div className="flex items-start gap-2">
+                      <span className="flex-1">{(question as any).passage}</span>
+                      {audioEnabled && (
+                        <TTSButton text={(question as any).passage} />
+                      )}
+                    </div>
                   </div>
                 )}
                 <div className="mb-2 flex items-center gap-2">
                   <span className="text-xs font-medium text-indigo-600 uppercase tracking-wide">{(question as any).domain}</span>
                   <span className="text-xs text-muted-foreground">· {(question as any).skillName}</span>
                 </div>
-                <h2 className="text-lg font-semibold mb-6 leading-snug">{(question as any).questionText}</h2>
+                <div className="flex items-start gap-2 mb-6">
+                  <h2 className="text-lg font-semibold leading-snug flex-1">{(question as any).questionText}</h2>
+                  {audioEnabled && (
+                    <TTSButton text={(question as any).questionText} size="md" />
+                  )}
+                </div>
                 <div className="space-y-3">
                   {(question as any).options?.map((opt: { id: string; text: string }) => {
                     const isSelected = selectedOption === opt.id;

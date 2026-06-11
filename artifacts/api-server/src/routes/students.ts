@@ -23,6 +23,14 @@ async function getStudentByUserId(userId: string) {
   return profile ?? null;
 }
 
+/** Returns the grade-band default for audioEnabled: K–3 → true, 4+ → false. */
+function defaultAudioEnabled(grade: string): boolean {
+  const normalized = grade.trim().toUpperCase();
+  if (normalized === "K") return true;
+  const num = parseInt(normalized, 10);
+  return !isNaN(num) && num <= 3;
+}
+
 const createStudentSchema = z.object({
   displayName: z.string().min(1),
   grade: z.string(),
@@ -40,6 +48,8 @@ const updateStudentSchema = z.object({
   culturalContext: z.array(z.string()).optional(),
   homeLanguage: z.string().optional(),
   musicPreference: z.string().optional(),
+  readingLevel: z.string().optional(),
+  audioEnabled: z.boolean().optional(),
 }).partial();
 
 // GET /api/students/profile
@@ -62,7 +72,11 @@ router.post("/students/profile", async (req, res) => {
 
   const [profile] = await db
     .insert(studentProfilesTable)
-    .values({ ...parsed.data, userId: req.user!.id })
+    .values({
+      ...parsed.data,
+      userId: req.user!.id,
+      audioEnabled: defaultAudioEnabled(parsed.data.grade),
+    })
     .returning();
   return res.status(201).json(profile);
 });

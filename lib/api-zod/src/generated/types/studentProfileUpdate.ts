@@ -15,4 +15,5 @@ export interface StudentProfileUpdate {
   culturalContext?: string[];
   homeLanguage?: string;
   readingLevel?: string;
+  audioEnabled?: boolean;
 }

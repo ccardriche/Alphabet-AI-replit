@@ -115,6 +115,7 @@ export interface StudentProfile {
   /** @nullable */
   placementPathway?: StudentProfilePlacementPathway;
   preAssessmentCompleted?: boolean;
+  audioEnabled?: boolean;
   totalXp?: number;
   currentStreak?: number;
   createdAt?: string;
@@ -139,6 +140,7 @@ export interface StudentProfileUpdate {
   culturalContext?: string[];
   homeLanguage?: string;
   readingLevel?: string;
+  audioEnabled?: boolean;
 }
 
 export interface TodayStats {

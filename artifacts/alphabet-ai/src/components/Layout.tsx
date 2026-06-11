@@ -1,11 +1,18 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { getRole, clearRole } from "@/lib/role";
 import {
   LayoutDashboard, GitBranch, Zap, TrendingUp,
-  Users, Upload, Dumbbell, LogOut, GraduationCap, AlertTriangle,
+  Users, Upload, Dumbbell, LogOut, GraduationCap, AlertTriangle, Volume2, VolumeX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  useGetStudentProfile,
+  useUpdateStudentProfile,
+  getGetStudentProfileQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const studentNav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -26,6 +33,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const role = getRole();
   const [location, setLocation] = useLocation();
   const nav = role === "teacher" ? teacherNav : studentNav;
+  const queryClient = useQueryClient();
+
+  const { data: profile } = useGetStudentProfile();
+  const updateProfile = useUpdateStudentProfile();
+  const [togglingAudio, setTogglingAudio] = useState(false);
+
+  const audioEnabled = (profile as any)?.audioEnabled !== false;
+
+  async function handleToggleAudio() {
+    if (togglingAudio) return;
+    setTogglingAudio(true);
+    try {
+      await updateProfile.mutateAsync({ data: { audioEnabled: !audioEnabled } as any });
+      queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey() });
+    } catch {
+      // silently ignore
+    } finally {
+      setTogglingAudio(false);
+    }
+  }
 
   function handleLogout() {
     clearRole();
@@ -67,7 +94,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-sidebar-border">
+        <div className="p-3 border-t border-sidebar-border space-y-1">
+          {role === "student" && profile && (
+            <button
+              onClick={handleToggleAudio}
+              disabled={togglingAudio}
+              data-testid="btn-toggle-audio"
+              className={cn(
+                "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                "disabled:opacity-50"
+              )}
+            >
+              {audioEnabled ? (
+                <Volume2 className="w-4 h-4 shrink-0 text-indigo-500" />
+              ) : (
+                <VolumeX className="w-4 h-4 shrink-0 text-muted-foreground" />
+              )}
+              <span>{audioEnabled ? "Read Aloud: On" : "Read Aloud: Off"}</span>
+            </button>
+          )}
+
           <Button
             variant="ghost"
             size="sm"
@@ -91,6 +138,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <span className="font-bold text-sm">Alphabet AI</span>
           </div>
+          {role === "student" && profile && (
+            <button
+              onClick={handleToggleAudio}
+              disabled={togglingAudio}
+              aria-label={audioEnabled ? "Disable read aloud" : "Enable read aloud"}
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {audioEnabled ? (
+                <Volume2 className="w-4 h-4 text-indigo-500" />
+              ) : (
+                <VolumeX className="w-4 h-4" />
+              )}
+            </button>
+          )}
         </header>
 
         <main className="flex-1 overflow-y-auto">
