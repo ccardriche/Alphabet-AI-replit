@@ -3,11 +3,12 @@ import { db } from "@workspace/db";
 import {
   studentProfilesTable,
   skillMasteryTable,
+  masteryLevelHistoryTable,
   elaSkillsTable,
   practiceSessionsTable,
   earnedBadgesTable,
 } from "@workspace/db/schema";
-import { eq, and, gte } from "drizzle-orm";
+import { eq, and, gte, asc } from "drizzle-orm";
 import { ALL_BADGES, checkAndAwardBadges } from "../lib/badges";
 import { z } from "zod";
 
@@ -359,22 +360,49 @@ router.get("/students/progress/weekly-xp", async (req, res) => {
 });
 
 // GET /api/students/progress/timeline
-// Returns ALL practiced skills as level-transition events ordered by lastUpdated.
-// Each event carries the skill's current mastery level, first_seen, and last_updated timestamps.
-// For mastered-level events, masteredCount is a running cumulative of skills mastered so far.
+// Returns true skill level-transition events from mastery_level_history, ordered by recordedAt.
+// Falls back to synthesising events from skill_mastery for students who have no history rows yet.
+// For toLevel=mastered events, masteredCount is a running cumulative of skills mastered so far.
 router.get("/students/progress/timeline", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const student = await getStudentByUserId(req.user!.id);
   if (!student) return res.json([]);
 
+  const historyRows = await db
+    .select()
+    .from(masteryLevelHistoryTable)
+    .where(eq(masteryLevelHistoryTable.studentId, student.id))
+    .orderBy(asc(masteryLevelHistoryTable.recordedAt))
+    .limit(500);
+
+  if (historyRows.length > 0) {
+    // Real history — use it directly
+    let cumulativeMastered = 0;
+    const result = historyRows.map((row) => {
+      const isMastered = row.toLevel === "mastered";
+      if (isMastered) cumulativeMastered++;
+      return {
+        date: row.recordedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        isoDate: row.recordedAt.toISOString().split("T")[0],
+        skillCode: row.skillCode,
+        skillName: row.skillName,
+        domain: row.domain,
+        fromLevel: row.fromLevel,
+        toLevel: row.toLevel,
+        ...(isMastered ? { masteredCount: cumulativeMastered } : {}),
+      };
+    });
+    return res.json(result);
+  }
+
+  // Legacy fallback: no history rows yet — synthesise one "introduced" event per practiced skill
   const masteryRows = await db
     .select()
     .from(skillMasteryTable)
     .where(eq(skillMasteryTable.studentId, student.id))
     .limit(200);
 
-  // Sort all practiced skills by when they were last updated (most recent first)
-  const sorted = [...masteryRows]
+  const practiced = [...masteryRows]
     .filter((m) => m.masteryLevel !== "not_started")
     .sort((a, b) => {
       const aTs = (a.masteredAt ?? a.updatedAt)?.getTime() ?? 0;
@@ -382,9 +410,8 @@ router.get("/students/progress/timeline", async (req, res) => {
       return aTs - bTs;
     });
 
-  // Compute running cumulative mastered count as we traverse oldest → newest
   let cumulativeMastered = 0;
-  const result = sorted.map((row) => {
+  const result = practiced.map((row) => {
     const ts = row.masteredAt ?? row.updatedAt;
     const isMastered = row.masteryLevel === "mastered";
     if (isMastered) cumulativeMastered++;
@@ -394,9 +421,8 @@ router.get("/students/progress/timeline", async (req, res) => {
       skillCode: row.skillCode,
       skillName: row.skillName,
       domain: row.domain,
-      level: row.masteryLevel,
-      firstSeen: row.createdAt?.toISOString().split("T")[0] ?? "",
-      lastUpdated: (row.masteredAt ?? row.updatedAt)?.toISOString().split("T")[0] ?? "",
+      fromLevel: "not_started",
+      toLevel: row.masteryLevel,
       ...(isMastered ? { masteredCount: cumulativeMastered } : {}),
     };
   });

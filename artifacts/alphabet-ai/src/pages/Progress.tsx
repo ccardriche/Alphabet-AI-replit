@@ -162,38 +162,101 @@ export default function Progress() {
           )}
         </div>
 
-        {/* Mastery Timeline — driven by /progress/timeline endpoint */}
-        {masteryEvents && masteryEvents.length > 0 && (
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Skills Mastered Over Time</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={masteryEvents} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                    formatter={(v: any, _name: any, props: any) => [
-                      `${v} skill${v !== 1 ? "s" : ""} mastered`,
-                      props?.payload?.skillName ?? "Mastered",
-                    ]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="masteredCount"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    dot={{ r: 3, fill: "#6366f1" }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
+        {/* Skill Journey Chart — driven by /progress/timeline endpoint */}
+        {masteryEvents && masteryEvents.length > 0 && (() => {
+          // Build two views from the event list:
+          // 1. Cumulative mastered line (only from toLevel=mastered events)
+          // 2. A recent activity log of all transitions
+          const masteredLine = masteryEvents
+            .filter((e) => e.masteredCount !== undefined)
+            .map((e) => ({ date: e.date, masteredCount: e.masteredCount! }));
+
+          const LEVEL_RANK: Record<string, number> = {
+            not_started: 0, introduced: 1, practicing: 2, approaching: 3, mastered: 4,
+          };
+          const LEVEL_LABELS: Record<string, string> = {
+            not_started: "Not Started", introduced: "Introduced",
+            practicing: "Practicing", approaching: "Approaching", mastered: "Mastered",
+          };
+          const LEVEL_COLORS: Record<string, string> = {
+            not_started: "#d1d5db", introduced: "#fbbf24", practicing: "#60a5fa",
+            approaching: "#34d399", mastered: "#6366f1",
+          };
+
+          // Recent 10 transitions for the activity list
+          const recent = [...masteryEvents].slice(-10).reverse();
+
+          return (
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Skill Journey</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {masteredLine.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Skills mastered over time</p>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <LineChart data={masteredLine} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <Tooltip
+                          contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                          formatter={(v: any) => [`${v} skill${v !== 1 ? "s" : ""}`, "Total Mastered"]}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="masteredCount"
+                          stroke="#6366f1"
+                          strokeWidth={2}
+                          dot={{ r: 3, fill: "#6366f1" }}
+                          activeDot={{ r: 5 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Recent level transitions */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Recent level changes</p>
+                  <div className="space-y-2">
+                    {recent.map((e, i) => {
+                      const fromColor = LEVEL_COLORS[e.fromLevel] ?? "#d1d5db";
+                      const toColor = LEVEL_COLORS[e.toLevel] ?? "#6366f1";
+                      const isPromotion = (LEVEL_RANK[e.toLevel] ?? 0) > (LEVEL_RANK[e.fromLevel] ?? 0);
+                      return (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-muted-foreground text-xs shrink-0">{e.date}</span>
+                            <span className="truncate font-medium">{e.skillName}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: `${fromColor}25`, color: fromColor }}
+                            >
+                              {LEVEL_LABELS[e.fromLevel] ?? e.fromLevel}
+                            </span>
+                            <span className={`text-xs ${isPromotion ? "text-green-500" : "text-amber-500"}`}>
+                              {isPromotion ? "→" : "↓"}
+                            </span>
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: `${toColor}25`, color: toColor }}
+                            >
+                              {LEVEL_LABELS[e.toLevel] ?? e.toLevel}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Domain Breakdown */}
         {summary?.domains && summary.domains.length > 0 && (

@@ -1,4 +1,4 @@
-import { pgTable, text, real, integer, boolean, timestamp, uuid, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, real, integer, boolean, timestamp, uuid, unique, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -32,3 +32,23 @@ export const insertSkillMasterySchema = createInsertSchema(skillMasteryTable).om
 });
 export type InsertSkillMastery = z.infer<typeof insertSkillMasterySchema>;
 export type SkillMastery = typeof skillMasteryTable.$inferSelect;
+
+export const masteryLevelHistoryTable = pgTable("mastery_level_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id").notNull(),
+  skillCode: text("skill_code").notNull(),
+  skillName: text("skill_name").notNull(),
+  domain: text("domain"),
+  fromLevel: text("from_level").notNull(),
+  toLevel: text("to_level").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  studentSkillIdx: index("mlh_student_skill_idx").on(table.studentId, table.skillCode),
+  recordedAtIdx: index("mlh_recorded_at_idx").on(table.recordedAt),
+}));
+
+export const insertMasteryLevelHistorySchema = createInsertSchema(masteryLevelHistoryTable).omit({
+  id: true, recordedAt: true,
+});
+export type InsertMasteryLevelHistory = z.infer<typeof insertMasteryLevelHistorySchema>;
+export type MasteryLevelHistory = typeof masteryLevelHistoryTable.$inferSelect;

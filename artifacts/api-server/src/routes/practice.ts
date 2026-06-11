@@ -4,6 +4,7 @@ import {
   practiceSessionsTable,
   studentProfilesTable,
   skillMasteryTable,
+  masteryLevelHistoryTable,
   elaSkillsTable,
   questionCacheTable,
 } from "@workspace/db/schema";
@@ -319,6 +320,11 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
     newMasteryLevel === "mastered" &&
     (!existingMastery || existingMastery.masteryLevel !== "mastered");
 
+  const prevLevel = existingMastery?.masteryLevel ?? "not_started";
+  const levelChanged = prevLevel !== newMasteryLevel;
+  const skillName = skill?.skillName ?? skillCode;
+  const domain = skill?.domainCode ?? existingMastery?.domain ?? "RL";
+
   if (existingMastery) {
     await db.update(skillMasteryTable).set({
       theta: newTheta,
@@ -338,8 +344,8 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
     await db.insert(skillMasteryTable).values({
       studentId: session.studentId,
       skillCode,
-      skillName: skill?.skillName ?? skillCode,
-      domain: skill?.domainCode ?? "RL",
+      skillName,
+      domain,
       theta: newTheta,
       thetaSe: newSe,
       smartScore: newSmartScore,
@@ -350,6 +356,18 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
       consecutiveErrors: correct ? 0 : 1,
       needsReteaching: !correct,
       masteredAt: newMasteryLevel === "mastered" ? new Date() : undefined,
+    });
+  }
+
+  // Record every level transition in mastery_level_history
+  if (levelChanged) {
+    await db.insert(masteryLevelHistoryTable).values({
+      studentId: session.studentId,
+      skillCode,
+      skillName,
+      domain,
+      fromLevel: prevLevel,
+      toLevel: newMasteryLevel,
     });
   }
 

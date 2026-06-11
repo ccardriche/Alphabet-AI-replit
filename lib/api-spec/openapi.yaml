@@ -1653,33 +1653,31 @@ components:
 
     MasteryEvent:
       type: object
-      required: [date, skillCode, skillName, level]
+      required: [date, skillCode, skillName, fromLevel, toLevel]
       properties:
         date:
           type: string
-          description: Display date string from lastUpdated (e.g. "Jun 5")
+          description: Display date string (e.g. "Jun 5")
         isoDate:
           type: string
-          description: ISO date string from lastUpdated for sorting
+          description: ISO date string (YYYY-MM-DD) for sorting
         skillCode:
           type: string
         skillName:
           type: string
         domain:
           type: ["string", "null"]
-        level:
+        fromLevel:
           type: string
           enum: [not_started, introduced, practicing, approaching, mastered]
-          description: Current mastery level of the skill
-        firstSeen:
+          description: Mastery level before the transition
+        toLevel:
           type: string
-          description: ISO date when the skill was first practiced (createdAt)
-        lastUpdated:
-          type: string
-          description: ISO date when the skill was last updated
+          enum: [not_started, introduced, practicing, approaching, mastered]
+          description: Mastery level after the transition
         masteredCount:
           type: integer
-          description: Running cumulative count of mastered skills up to this event (only present for mastered-level events)
+          description: Running cumulative count of mastered skills up to this event (only present for toLevel=mastered events)
 
     MasteryTimelinePoint:
       type: object

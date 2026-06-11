@@ -7,12 +7,12 @@
  */
 
 /**
- * Current mastery level of the skill
+ * Mastery level before the transition
  */
-export type MasteryEventLevel = typeof MasteryEventLevel[keyof typeof MasteryEventLevel];
+export type MasteryEventFromLevel = typeof MasteryEventFromLevel[keyof typeof MasteryEventFromLevel];
 
 
-export const MasteryEventLevel = {
+export const MasteryEventFromLevel = {
   not_started: 'not_started',
   introduced: 'introduced',
   practicing: 'practicing',

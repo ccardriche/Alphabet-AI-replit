@@ -360,15 +360,14 @@ export const GetWeeklyXpResponse = zod.array(GetWeeklyXpResponseItem)
  * @summary Get mastery milestone events ordered by date (when each skill was mastered)
  */
 export const GetMasteryTimelineResponseItem = zod.object({
-  "date": zod.string().describe('Display date string from lastUpdated (e.g. \"Jun 5\")'),
-  "isoDate": zod.string().optional().describe('ISO date string from lastUpdated for sorting'),
+  "date": zod.string().describe('Display date string (e.g. \"Jun 5\")'),
+  "isoDate": zod.string().optional().describe('ISO date string (YYYY-MM-DD) for sorting'),
   "skillCode": zod.string(),
   "skillName": zod.string(),
   "domain": zod.string().nullish(),
-  "level": zod.enum(['not_started', 'introduced', 'practicing', 'approaching', 'mastered']).describe('Current mastery level of the skill'),
-  "firstSeen": zod.string().optional().describe('ISO date when the skill was first practiced (createdAt)'),
-  "lastUpdated": zod.string().optional().describe('ISO date when the skill was last updated'),
-  "masteredCount": zod.number().optional().describe('Running cumulative count of mastered skills up to this event (only present for mastered-level events)')
+  "fromLevel": zod.enum(['not_started', 'introduced', 'practicing', 'approaching', 'mastered']).describe('Mastery level before the transition'),
+  "toLevel": zod.enum(['not_started', 'introduced', 'practicing', 'approaching', 'mastered']).describe('Mastery level after the transition'),
+  "masteredCount": zod.number().optional().describe('Running cumulative count of mastered skills up to this event (only present for toLevel=mastered events)')
 })
 export const GetMasteryTimelineResponse = zod.array(GetMasteryTimelineResponseItem)
 

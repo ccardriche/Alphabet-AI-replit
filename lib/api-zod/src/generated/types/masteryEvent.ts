@@ -5,23 +5,22 @@
  * Alphabet AI - Adaptive K-12 ELA Mastery Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { MasteryEventLevel } from './masteryEventLevel';
+import type { MasteryEventFromLevel } from './masteryEventFromLevel';
+import type { MasteryEventToLevel } from './masteryEventToLevel';
 
 export interface MasteryEvent {
-  /** Display date string from lastUpdated (e.g. "Jun 5") */
+  /** Display date string (e.g. "Jun 5") */
   date: string;
-  /** ISO date string from lastUpdated for sorting */
+  /** ISO date string (YYYY-MM-DD) for sorting */
   isoDate?: string;
   skillCode: string;
   skillName: string;
   /** @nullable */
   domain?: string | null;
-  /** Current mastery level of the skill */
-  level: MasteryEventLevel;
-  /** ISO date when the skill was first practiced (createdAt) */
-  firstSeen?: string;
-  /** ISO date when the skill was last updated */
-  lastUpdated?: string;
-  /** Running cumulative count of mastered skills up to this event (only present for mastered-level events) */
+  /** Mastery level before the transition */
+  fromLevel: MasteryEventFromLevel;
+  /** Mastery level after the transition */
+  toLevel: MasteryEventToLevel;
+  /** Running cumulative count of mastered skills up to this event (only present for toLevel=mastered events) */
   masteredCount?: number;
 }
