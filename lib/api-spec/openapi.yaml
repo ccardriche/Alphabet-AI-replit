@@ -1141,6 +1141,196 @@ paths:
               schema:
                 $ref: "#/components/schemas/FluencySessionRecord"
 
+  /projects/teacher:
+    get:
+      operationId: listTeacherProjects
+      tags: [projects]
+      summary: List all projects created by the current teacher
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupProject"
+
+  /projects:
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a new group project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupProjectInput"
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupProject"
+
+  /projects/teacher/{projectId}:
+    get:
+      operationId: getTeacherProject
+      tags: [projects]
+      summary: Get project details with all groups and submissions
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Project with full details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherProjectDetail"
+    put:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update project status or details
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupProjectUpdate"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupProject"
+
+  /projects/teacher/{projectId}/groups:
+    post:
+      operationId: createProjectGroup
+      tags: [projects]
+      summary: Create a group and assign students
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectGroupInput"
+      responses:
+        "201":
+          description: Created group with members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectGroupWithMembers"
+
+  /projects/teacher/{projectId}/groups/{groupId}/feedback:
+    put:
+      operationId: saveGroupFeedback
+      tags: [projects]
+      summary: Save teacher feedback on a group submission
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: groupId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectFeedbackInput"
+      responses:
+        "200":
+          description: Updated submission with feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectSubmission"
+
+  /projects/student:
+    get:
+      operationId: listStudentProjects
+      tags: [projects]
+      summary: List all projects the current student is assigned to
+      responses:
+        "200":
+          description: Student project list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentProjectSummary"
+
+  /projects/student/{projectId}:
+    get:
+      operationId: getStudentProject
+      tags: [projects]
+      summary: Get a student's project detail including group and submission
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Project detail for student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProjectDetail"
+
+  /projects/student/{projectId}/submission:
+    put:
+      operationId: saveStudentSubmission
+      tags: [projects]
+      summary: Save or update the group submission
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectSubmissionInput"
+      responses:
+        "200":
+          description: Updated submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectSubmission"
+
 components:
   schemas:
     HealthStatus:
@@ -2413,6 +2603,185 @@ components:
           type: string
         count:
           type: integer
+
+    # ── GROUP PROJECTS ────────────────────────────────────────────────────────
+    GroupProject:
+      type: object
+      required: [id, teacherId, title, type, prompt, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        teacherId:
+          type: string
+        classId:
+          type: ["string", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        type:
+          type: string
+        prompt:
+          type: string
+        rubric:
+          type: ["string", "null"]
+        dueDate:
+          type: ["string", "null"]
+        status:
+          type: string
+        gradeLevel:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    ProjectFeedbackInput:
+      type: object
+      required: [feedback]
+      properties:
+        feedback:
+          type: string
+
+    ProjectSubmissionInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+        submitted:
+          type: boolean
+
+    GroupProjectInput:
+      type: object
+      required: [title, type, prompt]
+      properties:
+        classId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+        prompt:
+          type: string
+        rubric:
+          type: string
+        dueDate:
+          type: string
+        status:
+          type: string
+        gradeLevel:
+          type: string
+
+    GroupProjectUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        prompt:
+          type: string
+        rubric:
+          type: string
+        dueDate:
+          type: string
+
+    ProjectGroupInput:
+      type: object
+      required: [name, studentIds]
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+        studentIds:
+          type: array
+          items:
+            type: string
+
+    ProjectSubmission:
+      type: object
+      required: [id, projectId, groupId, content, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        groupId:
+          type: string
+        content:
+          type: string
+        submittedByStudentId:
+          type: ["string", "null"]
+        submittedAt:
+          type: ["string", "null"]
+        feedback:
+          type: ["string", "null"]
+        feedbackAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    ProjectGroupWithMembers:
+      type: object
+      required: [id, projectId, name, memberIds]
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        name:
+          type: string
+        color:
+          type: ["string", "null"]
+        memberIds:
+          type: array
+          items:
+            type: string
+        submission:
+          $ref: "#/components/schemas/ProjectSubmission"
+
+    TeacherProjectDetail:
+      type: object
+      required: [project, groups]
+      properties:
+        project:
+          $ref: "#/components/schemas/GroupProject"
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectGroupWithMembers"
+
+    StudentProjectSummary:
+      type: object
+      required: [project, group, hasFeedback]
+      properties:
+        project:
+          $ref: "#/components/schemas/GroupProject"
+        group:
+          $ref: "#/components/schemas/ProjectGroupWithMembers"
+        hasFeedback:
+          type: boolean
+
+    StudentProjectDetail:
+      type: object
+      required: [project, group, groupMemberNames]
+      properties:
+        project:
+          $ref: "#/components/schemas/GroupProject"
+        group:
+          $ref: "#/components/schemas/ProjectGroupWithMembers"
+        groupMemberNames:
+          type: array
+          items:
+            type: string
 
     # ── FLUENCY ───────────────────────────────────────────────────────────────
     FluencyPassage:

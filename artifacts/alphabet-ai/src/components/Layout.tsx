@@ -5,7 +5,7 @@ import { getRole, clearRole } from "@/lib/role";
 import { useToast } from "@/hooks/use-toast";
 import {
   LayoutDashboard, GitBranch, Zap, TrendingUp, Timer,
-  Users, Upload, Dumbbell, LogOut, GraduationCap, AlertTriangle, Volume2, VolumeX,
+  Users, Upload, Dumbbell, LogOut, GraduationCap, AlertTriangle, Volume2, VolumeX, FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,12 +21,14 @@ const studentNav = [
   { href: "/skill-tree", label: "Skill Tree", icon: GitBranch },
   { href: "/fluency", label: "Fluency", icon: Timer },
   { href: "/intervention", label: "Intervention", icon: AlertTriangle },
+  { href: "/projects", label: "My Projects", icon: FolderOpen },
   { href: "/progress", label: "Progress", icon: TrendingUp },
 ];
 
 const teacherNav = [
   { href: "/teacher", label: "Dashboard", icon: LayoutDashboard },
   { href: "/teacher/roster", label: "Class Roster", icon: Users },
+  { href: "/teacher/projects", label: "Group Projects", icon: FolderOpen },
   { href: "/teacher/book-upload", label: "Book Upload", icon: Upload },
   { href: "/teacher/exercises", label: "Exercises", icon: Dumbbell },
 ];

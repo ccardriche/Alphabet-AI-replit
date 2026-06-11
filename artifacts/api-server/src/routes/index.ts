@@ -9,6 +9,7 @@ import teacherRouter from "./teacher";
 import aiRouter from "./ai";
 import caregiverRouter from "./caregiver";
 import fluencyRouter from "./fluency";
+import projectsRouter from "./projects";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(practiceRouter);
 router.use(teacherRouter);
 router.use(caregiverRouter);
 router.use(fluencyRouter);
+router.use(projectsRouter);
 
 export default router;

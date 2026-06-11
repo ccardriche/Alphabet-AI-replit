@@ -803,6 +803,107 @@ export interface ClassAnalytics {
   scoreDistribution: ScoreBucket[];
 }
 
+export interface GroupProject {
+  id: string;
+  teacherId: string;
+  /** @nullable */
+  classId?: string | null;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  type: string;
+  prompt: string;
+  /** @nullable */
+  rubric?: string | null;
+  /** @nullable */
+  dueDate?: string | null;
+  status: string;
+  /** @nullable */
+  gradeLevel?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectFeedbackInput {
+  feedback: string;
+}
+
+export interface ProjectSubmissionInput {
+  content: string;
+  submitted?: boolean;
+}
+
+export interface GroupProjectInput {
+  classId?: string;
+  title: string;
+  description?: string;
+  type: string;
+  prompt: string;
+  rubric?: string;
+  dueDate?: string;
+  status?: string;
+  gradeLevel?: string;
+}
+
+export interface GroupProjectUpdate {
+  title?: string;
+  description?: string;
+  status?: string;
+  prompt?: string;
+  rubric?: string;
+  dueDate?: string;
+}
+
+export interface ProjectGroupInput {
+  name: string;
+  color?: string;
+  studentIds: string[];
+}
+
+export interface ProjectSubmission {
+  id: string;
+  projectId: string;
+  groupId: string;
+  content: string;
+  /** @nullable */
+  submittedByStudentId?: string | null;
+  /** @nullable */
+  submittedAt?: string | null;
+  /** @nullable */
+  feedback?: string | null;
+  /** @nullable */
+  feedbackAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectGroupWithMembers {
+  id: string;
+  projectId: string;
+  name: string;
+  /** @nullable */
+  color?: string | null;
+  memberIds: string[];
+  submission?: ProjectSubmission;
+}
+
+export interface TeacherProjectDetail {
+  project: GroupProject;
+  groups: ProjectGroupWithMembers[];
+}
+
+export interface StudentProjectSummary {
+  project: GroupProject;
+  group: ProjectGroupWithMembers;
+  hasFeedback: boolean;
+}
+
+export interface StudentProjectDetail {
+  project: GroupProject;
+  group: ProjectGroupWithMembers;
+  groupMemberNames: string[];
+}
+
 export interface FluencyPassage {
   key: string;
   title: string;

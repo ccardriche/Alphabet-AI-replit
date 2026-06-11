@@ -9,3 +9,4 @@ export * from "./question-cache";
 export * from "./gamification";
 export * from "./caregiver";
 export * from "./fluency";
+export * from "./projects";

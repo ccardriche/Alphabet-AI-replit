@@ -1387,3 +1387,273 @@ export const SaveFluencySessionBody = zod.object({
 })
 
 
+/**
+ * @summary List all projects created by the current teacher
+ */
+export const ListTeacherProjectsResponseItem = zod.object({
+  "id": zod.string(),
+  "teacherId": zod.string(),
+  "classId": zod.string().nullish(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "prompt": zod.string(),
+  "rubric": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.string(),
+  "gradeLevel": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListTeacherProjectsResponse = zod.array(ListTeacherProjectsResponseItem)
+
+
+/**
+ * @summary Create a new group project
+ */
+export const CreateProjectBody = zod.object({
+  "classId": zod.string().optional(),
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "type": zod.string(),
+  "prompt": zod.string(),
+  "rubric": zod.string().optional(),
+  "dueDate": zod.string().optional(),
+  "status": zod.string().optional(),
+  "gradeLevel": zod.string().optional()
+})
+
+
+/**
+ * @summary Get project details with all groups and submissions
+ */
+export const GetTeacherProjectParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const GetTeacherProjectResponse = zod.object({
+  "project": zod.object({
+  "id": zod.string(),
+  "teacherId": zod.string(),
+  "classId": zod.string().nullish(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "prompt": zod.string(),
+  "rubric": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.string(),
+  "gradeLevel": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "groups": zod.array(zod.object({
+  "id": zod.string(),
+  "projectId": zod.string(),
+  "name": zod.string(),
+  "color": zod.string().nullish(),
+  "memberIds": zod.array(zod.string()),
+  "submission": zod.object({
+  "id": zod.string(),
+  "projectId": zod.string(),
+  "groupId": zod.string(),
+  "content": zod.string(),
+  "submittedByStudentId": zod.string().nullish(),
+  "submittedAt": zod.string().nullish(),
+  "feedback": zod.string().nullish(),
+  "feedbackAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).optional()
+}))
+})
+
+
+/**
+ * @summary Update project status or details
+ */
+export const UpdateProjectParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const UpdateProjectBody = zod.object({
+  "title": zod.string().optional(),
+  "description": zod.string().optional(),
+  "status": zod.string().optional(),
+  "prompt": zod.string().optional(),
+  "rubric": zod.string().optional(),
+  "dueDate": zod.string().optional()
+})
+
+export const UpdateProjectResponse = zod.object({
+  "id": zod.string(),
+  "teacherId": zod.string(),
+  "classId": zod.string().nullish(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "prompt": zod.string(),
+  "rubric": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.string(),
+  "gradeLevel": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Create a group and assign students
+ */
+export const CreateProjectGroupParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const CreateProjectGroupBody = zod.object({
+  "name": zod.string(),
+  "color": zod.string().optional(),
+  "studentIds": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Save teacher feedback on a group submission
+ */
+export const SaveGroupFeedbackParams = zod.object({
+  "projectId": zod.coerce.string(),
+  "groupId": zod.coerce.string()
+})
+
+export const SaveGroupFeedbackBody = zod.object({
+  "feedback": zod.string()
+})
+
+export const SaveGroupFeedbackResponse = zod.object({
+  "id": zod.string(),
+  "projectId": zod.string(),
+  "groupId": zod.string(),
+  "content": zod.string(),
+  "submittedByStudentId": zod.string().nullish(),
+  "submittedAt": zod.string().nullish(),
+  "feedback": zod.string().nullish(),
+  "feedbackAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary List all projects the current student is assigned to
+ */
+export const ListStudentProjectsResponseItem = zod.object({
+  "project": zod.object({
+  "id": zod.string(),
+  "teacherId": zod.string(),
+  "classId": zod.string().nullish(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "prompt": zod.string(),
+  "rubric": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.string(),
+  "gradeLevel": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "group": zod.object({
+  "id": zod.string(),
+  "projectId": zod.string(),
+  "name": zod.string(),
+  "color": zod.string().nullish(),
+  "memberIds": zod.array(zod.string()),
+  "submission": zod.object({
+  "id": zod.string(),
+  "projectId": zod.string(),
+  "groupId": zod.string(),
+  "content": zod.string(),
+  "submittedByStudentId": zod.string().nullish(),
+  "submittedAt": zod.string().nullish(),
+  "feedback": zod.string().nullish(),
+  "feedbackAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).optional()
+}),
+  "hasFeedback": zod.boolean()
+})
+export const ListStudentProjectsResponse = zod.array(ListStudentProjectsResponseItem)
+
+
+/**
+ * @summary Get a student's project detail including group and submission
+ */
+export const GetStudentProjectParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const GetStudentProjectResponse = zod.object({
+  "project": zod.object({
+  "id": zod.string(),
+  "teacherId": zod.string(),
+  "classId": zod.string().nullish(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "prompt": zod.string(),
+  "rubric": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.string(),
+  "gradeLevel": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "group": zod.object({
+  "id": zod.string(),
+  "projectId": zod.string(),
+  "name": zod.string(),
+  "color": zod.string().nullish(),
+  "memberIds": zod.array(zod.string()),
+  "submission": zod.object({
+  "id": zod.string(),
+  "projectId": zod.string(),
+  "groupId": zod.string(),
+  "content": zod.string(),
+  "submittedByStudentId": zod.string().nullish(),
+  "submittedAt": zod.string().nullish(),
+  "feedback": zod.string().nullish(),
+  "feedbackAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).optional()
+}),
+  "groupMemberNames": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Save or update the group submission
+ */
+export const SaveStudentSubmissionParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const SaveStudentSubmissionBody = zod.object({
+  "content": zod.string(),
+  "submitted": zod.boolean().optional()
+})
+
+export const SaveStudentSubmissionResponse = zod.object({
+  "id": zod.string(),
+  "projectId": zod.string(),
+  "groupId": zod.string(),
+  "content": zod.string(),
+  "submittedByStudentId": zod.string().nullish(),
+  "submittedAt": zod.string().nullish(),
+  "feedback": zod.string().nullish(),
+  "feedbackAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
