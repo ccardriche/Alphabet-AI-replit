@@ -12,9 +12,10 @@ export interface ActivityResult {
   correct: boolean;
   xpEarned: number;
   masteryUpdated: SkillMastery;
-  /** @nullable */
+  /** AI-generated explanation of the correct answer */
   explanation?: string | null;
-  /** @nullable */
+  /** Text of the correct answer option */
+  correctAnswerText?: string | null;
   encouragement?: string | null;
   newBadges?: BadgeStatus[];
 }

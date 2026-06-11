@@ -2024,9 +2024,16 @@ components:
         masteryUpdated:
           $ref: "#/components/schemas/SkillMastery"
         explanation:
-          type: ["string", "null"]
+          type: string
+          nullable: true
+          description: AI-generated explanation of the correct answer
+        correctAnswerText:
+          type: string
+          nullable: true
+          description: Text of the correct answer option
         encouragement:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         newBadges:
           type: array
           items:

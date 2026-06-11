@@ -741,7 +741,8 @@ export const SubmitActivityAnswerResponse = zod.object({
   "isUnlocked": zod.boolean().optional(),
   "lastPracticed": zod.string().nullish()
 }),
-  "explanation": zod.string().nullish(),
+  "explanation": zod.string().nullish().describe('AI-generated explanation of the correct answer'),
+  "correctAnswerText": zod.string().nullish().describe('Text of the correct answer option'),
   "encouragement": zod.string().nullish(),
   "newBadges": zod.array(zod.object({
   "code": zod.string(),

@@ -46,6 +46,8 @@ export default function Practice() {
   const [activityNum, setActivityNum] = useState(0);
   const [score, setScore] = useState({ correct: 0, total: 0, xp: 0 });
   const [pendingBadges, setPendingBadges] = useState<BadgeStatus[]>([]);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [correctAnswerText, setCorrectAnswerText] = useState<string | null>(null);
 
   const search = useSearch();
   const focusSkillCode = useMemo(() => new URLSearchParams(search).get("skill") ?? undefined, [search]);
@@ -97,6 +99,8 @@ export default function Practice() {
           skillCode: (activity as any).skillCode,
         },
       });
+      if (result?.explanation) setExplanation(result.explanation);
+      if (result?.correctAnswerText) setCorrectAnswerText(result.correctAnswerText);
       if (result?.newBadges && result.newBadges.length > 0) {
         setPendingBadges(result.newBadges);
         queryClient.invalidateQueries({ queryKey: getGetMyBadgesQueryKey() });
@@ -115,6 +119,8 @@ export default function Practice() {
     setActivityNum(newNum);
     setSelected(null);
     setIsCorrect(null);
+    setExplanation(null);
+    setCorrectAnswerText(null);
     setPhase("activity");
     await refetchActivity();
   }
@@ -260,11 +266,36 @@ export default function Practice() {
                   </div>
 
                   {phase === "feedback" && (
-                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
-                      <div className={cn("flex items-center gap-2 p-3 rounded-lg text-sm mb-3", isCorrect ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 space-y-3">
+                      <div className={cn("flex items-center gap-2 p-3 rounded-lg text-sm", isCorrect ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
                         {isCorrect ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
                         <span className="font-medium">{isCorrect ? `+10 XP! Great job!` : "Not quite. Keep going!"}</span>
                       </div>
+
+                      {!isCorrect && correctAnswerText && (
+                        <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm">
+                          <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-green-800 mb-0.5">Correct answer</p>
+                            <p className="text-green-700">{correctAnswerText}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {explanation && (
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm">
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1">
+                              <p className="font-semibold text-indigo-800 mb-1">Why?</p>
+                              <p className="text-indigo-700 leading-relaxed">{explanation}</p>
+                            </div>
+                            {audioEnabled && (
+                              <TTSButton text={explanation} className="shrink-0 mt-0.5" />
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <Button onClick={handleNext} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white" data-testid="btn-next-activity">
                         {activityNum >= 4 ? "Finish Session" : "Next Activity"}
                       </Button>

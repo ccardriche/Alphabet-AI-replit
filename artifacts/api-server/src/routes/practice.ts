@@ -5,6 +5,7 @@ import {
   studentProfilesTable,
   skillMasteryTable,
   elaSkillsTable,
+  questionCacheTable,
 } from "@workspace/db/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { checkAndAwardBadges } from "../lib/badges";
@@ -16,7 +17,61 @@ import {
   type IrtResponse,
   type ItemCandidate,
 } from "@workspace/irt-engine";
-import { generateQuestion } from "../services/questionGenerator";
+import { generateQuestion, AdaptiveQuestionSchema } from "../services/questionGenerator";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  baseURL: process.env.OPENAI_API_BASE_URL ?? "https://api.openai.com/v1",
+  apiKey: process.env.OPENAI_API_KEY ?? "sk-placeholder",
+});
+
+async function getQuestionFromCache(questionId: string) {
+  const rows = await db
+    .select()
+    .from(questionCacheTable)
+    .where(sql`${questionCacheTable.payload}->>'id' = ${questionId}`)
+    .limit(1);
+  if (rows.length === 0) return null;
+  const parsed = AdaptiveQuestionSchema.safeParse(rows[0].payload);
+  return parsed.success ? parsed.data : null;
+}
+
+async function generateFallbackExplanation(params: {
+  correct: boolean;
+  skillName: string;
+  questionText?: string;
+  correctAnswerText?: string;
+  selectedAnswerText?: string;
+}): Promise<string> {
+  const { correct, skillName, questionText, correctAnswerText, selectedAnswerText } = params;
+  const hasContext = !!(questionText && correctAnswerText);
+  try {
+    let prompt: string;
+    if (hasContext && correct) {
+      prompt = `A student answered this ELA question correctly about "${skillName}". Question: "${questionText}". They chose: "${correctAnswerText}". Write 2 sentences reinforcing why their answer is correct and what it demonstrates about the skill.`;
+    } else if (hasContext && !correct) {
+      prompt = `A student answered this ELA question about "${skillName}" incorrectly. Question: "${questionText}". They chose: "${selectedAnswerText ?? "an incorrect option"}" but the correct answer is: "${correctAnswerText}". Write 2-3 sentences explaining why "${correctAnswerText}" is correct and giving a specific hint toward the right answer. Be encouraging.`;
+    } else if (correct) {
+      prompt = `A student answered a practice question correctly about the ELA skill "${skillName}". Write 2 encouraging sentences reinforcing what this skill means and how mastering it helps with reading and writing.`;
+    } else {
+      prompt = `A student answered a practice question incorrectly about the ELA skill "${skillName}". Write 2-3 encouraging sentences explaining what this skill involves and giving a concrete hint about what to look for when answering questions about "${skillName}".`;
+    }
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 150,
+      temperature: 0.6,
+    });
+    return completion.choices[0].message.content?.trim() ?? "";
+  } catch {
+    if (correct) {
+      return `Great work! You demonstrated solid understanding of ${skillName}. Keep practicing to deepen your mastery.`;
+    }
+    return correctAnswerText
+      ? `The correct answer is: "${correctAnswerText}". Review the key ideas about ${skillName} to strengthen this skill.`
+      : `Take another look at the key concepts behind ${skillName} to sharpen your skills for next time.`;
+  }
+}
 
 const router = Router();
 
@@ -317,6 +372,41 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
 
   const newBadges = await checkAndAwardBadges(session.studentId);
 
+  // Look up the question from cache to build an authoritative explanation server-side
+  let responseExplanation: string | null = null;
+  let responseCorrectAnswerText: string | null = null;
+  try {
+    const cachedQuestion = await getQuestionFromCache(questionId);
+    if (cachedQuestion) {
+      responseCorrectAnswerText = cachedQuestion.options.find(
+        (o) => o.id === cachedQuestion.correctOptionId,
+      )?.text ?? null;
+      if (!correct && responseCorrectAnswerText) {
+        // For incorrect answers, prepend an explicit hint naming the correct answer so students
+        // get immediate, actionable guidance before the full rationale
+        responseExplanation = `Hint: The correct answer is "${responseCorrectAnswerText}". ${cachedQuestion.explanation}`;
+      } else {
+        responseExplanation = cachedQuestion.explanation;
+      }
+    } else {
+      // Fallback/mock questions aren't in the DB cache — generate a brief explanation via GPT
+      // using the skill name and correctness context we do have authoritatively
+      const skillInfo = await db
+        .select({ skillName: elaSkillsTable.skillName })
+        .from(elaSkillsTable)
+        .where(eq(elaSkillsTable.skillCode, skillCode))
+        .limit(1);
+      const skillName = skillInfo[0]?.skillName ?? skillCode;
+      responseExplanation = await generateFallbackExplanation({
+        correct,
+        skillName,
+      });
+      // correctAnswerText stays null for cache-miss questions — the frontend handles the absent panel gracefully
+    }
+  } catch {
+    // Non-fatal — explanation is best-effort
+  }
+
   return res.json({
     ...updated,
     xpEarned,
@@ -326,6 +416,8 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
     newSmartScore,
     newMasteryLevel,
     newBadges,
+    explanation: responseExplanation,
+    correctAnswerText: responseCorrectAnswerText,
   });
 });
 
