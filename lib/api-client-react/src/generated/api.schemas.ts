@@ -464,6 +464,26 @@ export interface ActivityAnswer {
   timeSpentSeconds?: number;
 }
 
+export type BadgeStatusRarity = typeof BadgeStatusRarity[keyof typeof BadgeStatusRarity];
+
+
+export const BadgeStatusRarity = {
+  common: 'common',
+  uncommon: 'uncommon',
+  rare: 'rare',
+  legendary: 'legendary',
+} as const;
+
+export interface BadgeStatus {
+  code: string;
+  icon: string;
+  title: string;
+  desc: string;
+  rarity: BadgeStatusRarity;
+  earned: boolean;
+  earnedAt?: string | null;
+}
+
 export interface ActivityResult {
   correct: boolean;
   xpEarned: number;
@@ -472,6 +492,7 @@ export interface ActivityResult {
   explanation?: string | null;
   /** @nullable */
   encouragement?: string | null;
+  newBadges?: BadgeStatus[];
 }
 
 export interface CompleteSessionInput {

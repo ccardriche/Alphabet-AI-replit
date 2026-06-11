@@ -11,9 +11,12 @@ import {
   getGetMasterySummaryQueryKey,
   getGetPracticeHistoryQueryKey,
   getGetNextActivityQueryKey,
+  getGetMyBadgesQueryKey,
+  type BadgeStatus,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Zap, CheckCircle, XCircle, Trophy, RotateCcw } from "lucide-react";
+import BadgeCelebration from "@/components/BadgeCelebration";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DOMAIN_COLORS } from "@/lib/constants";
@@ -42,6 +45,7 @@ export default function Practice() {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [activityNum, setActivityNum] = useState(0);
   const [score, setScore] = useState({ correct: 0, total: 0, xp: 0 });
+  const [pendingBadges, setPendingBadges] = useState<BadgeStatus[]>([]);
 
   const { data: profile } = useGetStudentProfile();
   const audioEnabled = (profile as any)?.audioEnabled !== false;
@@ -81,7 +85,7 @@ export default function Practice() {
     setScore((s) => ({ correct: s.correct + (cor ? 1 : 0), total: s.total + 1, xp: s.xp + (cor ? 10 : 2) }));
 
     try {
-      await submitAnswer.mutateAsync({
+      const result = await submitAnswer.mutateAsync({
         sessionId,
         data: {
           questionId: q.id,
@@ -90,6 +94,10 @@ export default function Practice() {
           skillCode: (activity as any).skillCode,
         },
       });
+      if (result?.newBadges && result.newBadges.length > 0) {
+        setPendingBadges(result.newBadges);
+        queryClient.invalidateQueries({ queryKey: getGetMyBadgesQueryKey() });
+      }
     } catch {/* swallow */}
   }
 
@@ -124,6 +132,12 @@ export default function Practice() {
 
   return (
     <Layout>
+      {pendingBadges.length > 0 && (
+        <BadgeCelebration
+          badges={pendingBadges}
+          onDismiss={() => setPendingBadges([])}
+        />
+      )}
       <div className="min-h-full p-6 flex items-center justify-center">
         <div className="w-full max-w-lg">
           <AnimatePresence mode="wait">

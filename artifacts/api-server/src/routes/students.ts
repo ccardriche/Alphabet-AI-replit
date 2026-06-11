@@ -5,8 +5,10 @@ import {
   skillMasteryTable,
   elaSkillsTable,
   practiceSessionsTable,
+  earnedBadgesTable,
 } from "@workspace/db/schema";
 import { eq, and, gte } from "drizzle-orm";
+import { ALL_BADGES } from "../lib/badges";
 import { z } from "zod";
 
 const router = Router();
@@ -372,6 +374,28 @@ router.get("/students/analytics", async (req, res) => {
     onTrack: avgScore >= 70,
     gradeGap: 0,
   });
+});
+
+router.get("/students/me/badges", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const student = await getStudentByUserId(req.user!.id);
+
+  const earned = student
+    ? await db
+        .select({ badgeCode: earnedBadgesTable.badgeCode, earnedAt: earnedBadgesTable.earnedAt })
+        .from(earnedBadgesTable)
+        .where(eq(earnedBadgesTable.studentId, student.id))
+    : [];
+
+  const earnedMap = new Map(earned.map((r) => [r.badgeCode, r.earnedAt]));
+
+  const result = ALL_BADGES.map((b) => ({
+    ...b,
+    earned: earnedMap.has(b.code),
+    earnedAt: earnedMap.get(b.code)?.toISOString() ?? null,
+  }));
+
+  return res.json(result);
 });
 
 export default router;

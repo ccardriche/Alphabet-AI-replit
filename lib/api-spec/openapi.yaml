@@ -298,6 +298,21 @@ paths:
                 items:
                   $ref: "#/components/schemas/MasteryEvent"
 
+  /students/me/badges:
+    get:
+      operationId: getMyBadges
+      tags: [students]
+      summary: Get all badges with earned status for current student
+      responses:
+        "200":
+          description: All badges with earned status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BadgeStatus"
+
   # ── ELA SKILL CATALOG ──────────────────────────────────────────────────────
   /skills:
     get:
@@ -1598,6 +1613,32 @@ components:
           type: ["string", "null"]
         encouragement:
           type: ["string", "null"]
+        newBadges:
+          type: array
+          items:
+            $ref: "#/components/schemas/BadgeStatus"
+
+    BadgeStatus:
+      type: object
+      required: [code, icon, title, desc, rarity, earned]
+      properties:
+        code:
+          type: string
+        icon:
+          type: string
+        title:
+          type: string
+        desc:
+          type: string
+        rarity:
+          type: string
+          enum: [common, uncommon, rare, legendary]
+        earned:
+          type: boolean
+        earnedAt:
+          type: string
+          format: date-time
+          nullable: true
 
     CompleteSessionInput:
       type: object

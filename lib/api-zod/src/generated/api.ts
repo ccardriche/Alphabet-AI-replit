@@ -327,6 +327,21 @@ export const GetMasteryTimelineResponse = zod.array(GetMasteryTimelineResponseIt
 
 
 /**
+ * @summary Get all badges with earned status for current student
+ */
+export const GetMyBadgesResponseItem = zod.object({
+  "code": zod.string(),
+  "icon": zod.string(),
+  "title": zod.string(),
+  "desc": zod.string(),
+  "rarity": zod.enum(['common', 'uncommon', 'rare', 'legendary']),
+  "earned": zod.boolean(),
+  "earnedAt": zod.coerce.date().nullish()
+})
+export const GetMyBadgesResponse = zod.array(GetMyBadgesResponseItem)
+
+
+/**
  * @summary List ELA skills with optional filters
  */
 export const ListSkillsQueryParams = zod.object({
@@ -679,7 +694,16 @@ export const SubmitActivityAnswerResponse = zod.object({
   "lastPracticed": zod.string().nullish()
 }),
   "explanation": zod.string().nullish(),
-  "encouragement": zod.string().nullish()
+  "encouragement": zod.string().nullish(),
+  "newBadges": zod.array(zod.object({
+  "code": zod.string(),
+  "icon": zod.string(),
+  "title": zod.string(),
+  "desc": zod.string(),
+  "rarity": zod.enum(['common', 'uncommon', 'rare', 'legendary']),
+  "earned": zod.boolean(),
+  "earnedAt": zod.coerce.date().nullish()
+})).optional()
 })
 
 

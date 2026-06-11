@@ -5,6 +5,7 @@
  * Alphabet AI - Adaptive K-12 ELA Mastery Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { BadgeStatus } from './badgeStatus';
 import type { SkillMastery } from './skillMastery';
 
 export interface ActivityResult {
@@ -15,4 +16,5 @@ export interface ActivityResult {
   explanation?: string | null;
   /** @nullable */
   encouragement?: string | null;
+  newBadges?: BadgeStatus[];
 }

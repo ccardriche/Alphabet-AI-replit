@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   useGetStudentDashboard,
   useGetMasterySummary,
+  useGetMyBadges,
 } from "@workspace/api-client-react";
 import { Zap, Flame, Trophy, BookOpen, ArrowRight, TrendingUp, Lock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,33 +13,6 @@ import Layout from "@/components/Layout";
 import MasteryBadge from "@/components/MasteryBadge";
 import { DOMAIN_COLORS } from "@/lib/constants";
 
-// ── Badge definitions ────────────────────────────────────────────────────────
-interface BadgeStats {
-  totalXp: number;
-  streak: number;
-  masteredSkills: number;
-  practiceCount: number;
-}
-
-interface BadgeDef {
-  id: string;
-  icon: string;
-  title: string;
-  desc: string;
-  check: (s: BadgeStats) => boolean;
-}
-
-const BADGES: BadgeDef[] = [
-  { id: "first_practice", icon: "🌟", title: "First Steps", desc: "Complete your first practice question", check: (s) => s.practiceCount > 0 },
-  { id: "xp_50", icon: "⚡", title: "XP Spark", desc: "Earn 50 XP", check: (s) => s.totalXp >= 50 },
-  { id: "xp_200", icon: "💎", title: "XP Collector", desc: "Earn 200 XP", check: (s) => s.totalXp >= 200 },
-  { id: "xp_500", icon: "👑", title: "XP Master", desc: "Earn 500 XP", check: (s) => s.totalXp >= 500 },
-  { id: "streak_3", icon: "🔥", title: "On Fire", desc: "3-day streak", check: (s) => s.streak >= 3 },
-  { id: "streak_7", icon: "🌈", title: "Week Warrior", desc: "7-day streak", check: (s) => s.streak >= 7 },
-  { id: "skills_1", icon: "🎯", title: "First Mastery", desc: "Master your first skill", check: (s) => s.masteredSkills >= 1 },
-  { id: "skills_5", icon: "🏅", title: "Skill Builder", desc: "Master 5 skills", check: (s) => s.masteredSkills >= 5 },
-  { id: "skills_10", icon: "🏆", title: "Champion", desc: "Master 10 skills", check: (s) => s.masteredSkills >= 10 },
-];
 
 function FlameIcon({ streak }: { streak: number }) {
   const isHot = streak >= 3;
@@ -70,6 +44,7 @@ export default function StudentDashboard() {
   const [, setLocation] = useLocation();
   const { data, isLoading } = useGetStudentDashboard();
   const { data: summary } = useGetMasterySummary();
+  const { data: allBadges = [] } = useGetMyBadges();
 
   if (isLoading) return (
     <Layout>
@@ -85,22 +60,10 @@ export default function StudentDashboard() {
   const nextSkills = data?.nextSkills ?? [];
   const recentMastery = data?.recentMastery ?? [];
   const streak = data?.streakDays ?? 0;
-  const totalXp = data?.totalXp ?? 0;
-  const masteredSkills = summary?.masteredSkills ?? 0;
   const practicedToday = (todayStats?.questionsAnswered ?? 0) > 0;
 
-  // Use the real completed session count returned by the dashboard endpoint
-  const completedSessionCount = (data as any)?.completedSessionCount ?? 0;
-
-  const badgeStats: BadgeStats = {
-    totalXp,
-    streak,
-    masteredSkills,
-    practiceCount: completedSessionCount,
-  };
-
-  const earnedBadges = BADGES.filter((b) => b.check(badgeStats));
-  const lockedBadges = BADGES.filter((b) => !b.check(badgeStats));
+  const earnedBadges = allBadges.filter((b) => b.earned);
+  const lockedBadges = allBadges.filter((b) => !b.earned);
 
   return (
     <Layout>
@@ -158,7 +121,7 @@ export default function StudentDashboard() {
               bg: "bg-green-50",
             },
             { label: "XP Today", value: todayStats?.xpEarned ?? 0, icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
-            { label: "Total XP", value: totalXp, icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50" },
+            { label: "Total XP", value: data?.totalXp ?? 0, icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50" },
           ].map(({ label, value, icon: Icon, color, bg }, i) => (
             <motion.div
               key={label}
@@ -306,7 +269,7 @@ export default function StudentDashboard() {
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
               {earnedBadges.map((badge, i) => (
                 <motion.div
-                  key={badge.id}
+                  key={badge.code}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.06, type: "spring", stiffness: 200 }}
@@ -320,7 +283,7 @@ export default function StudentDashboard() {
               ))}
               {lockedBadges.slice(0, Math.max(0, 9 - earnedBadges.length)).map((badge) => (
                 <div
-                  key={badge.id}
+                  key={badge.code}
                   className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-gray-50 border border-gray-200 text-center opacity-50"
                   title={badge.desc}
                 >

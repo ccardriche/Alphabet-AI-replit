@@ -14,6 +14,8 @@ export * from './answerRecord';
 export * from './authorizationSessionHeaderParameter';
 export * from './authUser';
 export * from './authUserEnvelope';
+export * from './badgeStatus';
+export * from './badgeStatusRarity';
 export * from './beginBrowserLoginParams';
 export * from './classAnalytics';
 export * from './classHeatmap';

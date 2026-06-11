@@ -7,6 +7,7 @@ import {
   elaSkillsTable,
 } from "@workspace/db/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
+import { checkAndAwardBadges } from "../lib/badges";
 import {
   eapUpdate,
   selectNextItem,
@@ -270,6 +271,8 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
     totalXp: sql`${studentProfilesTable.totalXp} + ${xpEarned}`,
   }).where(eq(studentProfilesTable.id, session.studentId));
 
+  const newBadges = await checkAndAwardBadges(session.studentId);
+
   return res.json({
     ...updated,
     xpEarned,
@@ -278,6 +281,7 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
     newSkillSe: newSe,
     newSmartScore,
     newMasteryLevel,
+    newBadges,
   });
 });
 
