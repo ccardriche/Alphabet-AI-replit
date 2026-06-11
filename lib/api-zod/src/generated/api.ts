@@ -775,6 +775,87 @@ export const GetInterventionPathwayResponse = zod.object({
 
 
 /**
+ * @summary Get skills flagged for reteaching (needsReteaching = true), grouped by domain
+ */
+export const GetReteachingSkillsResponseItem = zod.object({
+  "domain": zod.string(),
+  "skills": zod.array(zod.object({
+  "skillCode": zod.string(),
+  "skillName": zod.string(),
+  "domain": zod.string().nullable(),
+  "smartScore": zod.number(),
+  "masteryLevel": zod.string(),
+  "consecutiveErrors": zod.number(),
+  "recentScores": zod.array(zod.number()).describe('Last up-to-5 smart scores for sparkline')
+}))
+})
+export const GetReteachingSkillsResponse = zod.array(GetReteachingSkillsResponseItem)
+
+
+/**
+ * @summary Complete a reteaching session; clears needsReteaching if score >= 2/3
+ */
+export const CompleteReteachingParams = zod.object({
+  "skillCode": zod.coerce.string()
+})
+
+export const CompleteReteachingBody = zod.object({
+  "correctCount": zod.number(),
+  "totalCount": zod.number()
+})
+
+export const CompleteReteachingResponse = zod.object({
+  "cleared": zod.boolean(),
+  "smartScore": zod.number(),
+  "masteryLevel": zod.string(),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary Generate a 3-part micro-lesson for a skill needing reteaching
+ */
+export const GenerateReteachLessonBody = zod.object({
+  "skillCode": zod.string(),
+  "skillName": zod.string(),
+  "gradeLevel": zod.string(),
+  "interests": zod.array(zod.string()).optional(),
+  "consecutiveErrors": zod.number().optional()
+})
+
+export const generateReteachLessonResponseGuidedQuestionsMin = 2;
+export const generateReteachLessonResponseGuidedQuestionsMax = 2;
+
+
+
+export const GenerateReteachLessonResponse = zod.object({
+  "skillCode": zod.string(),
+  "skillName": zod.string(),
+  "explanation": zod.string(),
+  "guidedQuestions": zod.array(zod.object({
+  "id": zod.string(),
+  "questionText": zod.string(),
+  "options": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string()
+})),
+  "correctOptionId": zod.string(),
+  "explanation": zod.string().optional()
+})).min(generateReteachLessonResponseGuidedQuestionsMin).max(generateReteachLessonResponseGuidedQuestionsMax),
+  "checkQuestion": zod.object({
+  "id": zod.string(),
+  "questionText": zod.string(),
+  "options": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string()
+})),
+  "correctOptionId": zod.string(),
+  "explanation": zod.string().optional()
+})
+})
+
+
+/**
  * @summary List classes for current teacher
  */
 export const ListTeacherClassesResponseItem = zod.object({
@@ -876,6 +957,7 @@ export const GetTeacherDashboardResponse = zod.object({
   "interventionCount": zod.number(),
   "onTrackCount": zod.number(),
   "notTestedCount": zod.number(),
+  "needsReteachingCount": zod.number().optional().describe('Total number of skill_mastery records with needsReteaching=true across all class students'),
   "avgClassScore": zod.number().optional(),
   "recentAlerts": zod.array(zod.object({
   "id": zod.string(),

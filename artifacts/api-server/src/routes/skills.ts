@@ -195,4 +195,54 @@ router.post("/mastery/:skillCode/record", async (req, res) => {
   }
 });
 
+// POST /api/students/reteaching/:skillCode/complete — clear needsReteaching if score >= 2/3
+router.post("/students/reteaching/:skillCode/complete", async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+  const { studentProfilesTable } = await import("@workspace/db/schema");
+  const student = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user.id)).limit(1))[0];
+  if (!student) return res.status(404).json({ error: "No student" });
+
+  const { correctCount, totalCount } = req.body as { correctCount: number; totalCount: number };
+  const skillCode = req.params.skillCode;
+
+  const [existing] = await db
+    .select()
+    .from(skillMasteryTable)
+    .where(and(eq(skillMasteryTable.studentId, student.id), eq(skillMasteryTable.skillCode, skillCode)))
+    .limit(1);
+
+  if (!existing) return res.status(404).json({ error: "Mastery record not found" });
+
+  const passed = correctCount >= 2 && totalCount >= 3 ? true : (totalCount > 0 && correctCount / totalCount >= 2 / 3);
+  const scoreBoost = passed ? 15 : 5;
+  const newSmartScore = Math.min(100, Math.max(0, existing.smartScore + scoreBoost));
+  const masteryLevel =
+    newSmartScore >= 90 ? "mastered"
+    : newSmartScore >= 75 ? "approaching"
+    : newSmartScore >= 50 ? "practicing"
+    : newSmartScore > 0 ? "introduced"
+    : "not_started";
+
+  await db
+    .update(skillMasteryTable)
+    .set({
+      needsReteaching: passed ? false : existing.needsReteaching,
+      consecutiveErrors: passed ? 0 : existing.consecutiveErrors,
+      smartScore: newSmartScore,
+      masteryPercentage: newSmartScore,
+      masteryLevel,
+      lastPracticed: new Date(),
+    })
+    .where(eq(skillMasteryTable.id, existing.id));
+
+  return res.json({
+    cleared: passed,
+    smartScore: newSmartScore,
+    masteryLevel,
+    message: passed
+      ? "Great work! You've demonstrated improvement. Keep it up!"
+      : "Good effort! Keep practicing to fully master this skill.",
+  });
+});
+
 export default router;

@@ -674,6 +674,65 @@ paths:
               schema:
                 $ref: "#/components/schemas/InterventionPathway"
 
+  /students/intervention:
+    get:
+      operationId: getReteachingSkills
+      tags: [students]
+      summary: Get skills flagged for reteaching (needsReteaching = true), grouped by domain
+      responses:
+        "200":
+          description: Reteaching skill groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReteachingSkillGroup"
+
+  /students/reteaching/{skillCode}/complete:
+    post:
+      operationId: completeReteaching
+      tags: [students]
+      summary: Complete a reteaching session; clears needsReteaching if score >= 2/3
+      parameters:
+        - in: path
+          name: skillCode
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReteachCompleteInput"
+      responses:
+        "200":
+          description: Updated mastery record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReteachCompleteResult"
+
+  /ai/reteach:
+    post:
+      operationId: generateReteachLesson
+      tags: [llm]
+      summary: Generate a 3-part micro-lesson for a skill needing reteaching
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReteachLessonInput"
+      responses:
+        "200":
+          description: Generated micro-lesson
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReteachLesson"
+
   # ── TEACHER ────────────────────────────────────────────────────────────────
   /teacher/classes:
     get:
@@ -1651,6 +1710,121 @@ components:
         durationMin:
           type: number
 
+    # ── RETEACHING ────────────────────────────────────────────────────────────
+    ReteachingSkill:
+      type: object
+      required: [skillCode, skillName, domain, smartScore, masteryLevel, consecutiveErrors, recentScores]
+      properties:
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        domain:
+          type: ["string", "null"]
+        smartScore:
+          type: number
+        masteryLevel:
+          type: string
+        consecutiveErrors:
+          type: integer
+        recentScores:
+          type: array
+          items:
+            type: number
+          description: Last up-to-5 smart scores for sparkline
+
+    ReteachingSkillGroup:
+      type: object
+      required: [domain, skills]
+      properties:
+        domain:
+          type: string
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReteachingSkill"
+
+    ReteachLessonInput:
+      type: object
+      required: [skillCode, skillName, gradeLevel]
+      properties:
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        gradeLevel:
+          type: string
+        interests:
+          type: array
+          items:
+            type: string
+        consecutiveErrors:
+          type: integer
+
+    ReteachQuestion:
+      type: object
+      required: [id, questionText, options, correctOptionId]
+      properties:
+        id:
+          type: string
+        questionText:
+          type: string
+        options:
+          type: array
+          items:
+            type: object
+            required: [id, text]
+            properties:
+              id:
+                type: string
+              text:
+                type: string
+        correctOptionId:
+          type: string
+        explanation:
+          type: string
+
+    ReteachLesson:
+      type: object
+      required: [skillCode, skillName, explanation, guidedQuestions, checkQuestion]
+      properties:
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        explanation:
+          type: string
+        guidedQuestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReteachQuestion"
+          minItems: 2
+          maxItems: 2
+        checkQuestion:
+          $ref: "#/components/schemas/ReteachQuestion"
+
+    ReteachCompleteInput:
+      type: object
+      required: [correctCount, totalCount]
+      properties:
+        correctCount:
+          type: integer
+        totalCount:
+          type: integer
+
+    ReteachCompleteResult:
+      type: object
+      required: [cleared, smartScore, masteryLevel]
+      properties:
+        cleared:
+          type: boolean
+        smartScore:
+          type: number
+        masteryLevel:
+          type: string
+        message:
+          type: string
+
     # ── INTERVENTION ──────────────────────────────────────────────────────────
     InterventionPathway:
       type: object
@@ -1811,6 +1985,9 @@ components:
           type: integer
         notTestedCount:
           type: integer
+        needsReteachingCount:
+          type: integer
+          description: Total number of skill_mastery records with needsReteaching=true across all class students
         avgClassScore:
           type: number
         recentAlerts:

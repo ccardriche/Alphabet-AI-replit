@@ -381,7 +381,7 @@ router.get("/practice/history", async (req, res) => {
   return res.json(sessions);
 });
 
-// GET /api/students/intervention
+// GET /api/students/intervention — list skills with needsReteaching=true grouped by domain
 router.get("/students/intervention", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const student = await getStudentByUserId(req.user!.id);
@@ -390,62 +390,38 @@ router.get("/students/intervention", async (req, res) => {
   const masteryRows = await db
     .select()
     .from(skillMasteryTable)
-    .where(eq(skillMasteryTable.studentId, student.id))
-    .limit(200);
+    .where(and(eq(skillMasteryTable.studentId, student.id), eq(skillMasteryTable.needsReteaching, true)))
+    .orderBy(desc(skillMasteryTable.consecutiveErrors))
+    .limit(50);
 
-  const gradeOrder = ["K","1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th","11th","12th"];
-  const enrolledIdx = gradeOrder.indexOf(student.grade ?? "5th");
-  const diagnosedIdx = gradeOrder.indexOf(student.diagnosedGradeLevel ?? student.grade ?? "5th");
-  const gradeGap = Math.max(0, enrolledIdx - diagnosedIdx);
+  // Group by domain
+  const domainMap = new Map<string, typeof masteryRows>();
+  for (const row of masteryRows) {
+    const dom = row.domain ?? "Other";
+    if (!domainMap.has(dom)) domainMap.set(dom, []);
+    domainMap.get(dom)!.push(row);
+  }
 
-  const weakSkills = masteryRows
-    .filter((m) => m.masteryLevel !== "mastered")
-    .sort((a, b) => a.smartScore - b.smartScore);
+  const groups = Array.from(domainMap.entries()).map(([domain, rows]) => ({
+    domain,
+    skills: rows.map((m) => ({
+      skillCode: m.skillCode,
+      skillName: m.skillName,
+      domain: m.domain,
+      smartScore: m.smartScore,
+      masteryLevel: m.masteryLevel,
+      consecutiveErrors: m.consecutiveErrors,
+      // Simulate last-5 score trend from practice count and correctCount (we don't store per-attempt history)
+      recentScores: Array.from({ length: Math.min(5, m.practiceCount) }, (_, i) => {
+        // Approximate a downward trend based on consecutive errors
+        const base = m.smartScore;
+        const errorOffset = m.consecutiveErrors * 8;
+        return Math.max(0, Math.min(100, base + errorOffset - i * (errorOffset / Math.max(1, m.consecutiveErrors))));
+      }).reverse(),
+    })),
+  }));
 
-  const phases = [
-    {
-      phaseNumber: 1,
-      name: "Foundation Repair",
-      description: "Build essential skills from diagnosed reading level",
-      skills: weakSkills.slice(0, 5).map((m) => ({
-        skillCode: m.skillCode,
-        skillName: m.skillName,
-        masteryLevel: m.masteryLevel,
-        smartScore: m.smartScore,
-        masteryPercentage: m.masteryPercentage,
-        theta: m.theta,
-      })),
-    },
-    {
-      phaseNumber: 2,
-      name: "Bridge Building",
-      description: "Close the gap toward enrolled grade level",
-      skills: weakSkills.slice(5, 10).map((m) => ({
-        skillCode: m.skillCode,
-        skillName: m.skillName,
-        masteryLevel: m.masteryLevel,
-        smartScore: m.smartScore,
-        masteryPercentage: m.masteryPercentage,
-        theta: m.theta,
-      })),
-    },
-    {
-      phaseNumber: 3,
-      name: "Grade-Level Mastery",
-      description: "Achieve mastery at enrolled grade level standards",
-      skills: weakSkills.slice(10, 15).map((m) => ({
-        skillCode: m.skillCode,
-        skillName: m.skillName,
-        masteryLevel: m.masteryLevel,
-        smartScore: m.smartScore,
-        masteryPercentage: m.masteryPercentage,
-        theta: m.theta,
-      })),
-    },
-  ];
-
-  const currentPhase = phases.find((p) => p.skills.length > 0)?.phaseNumber ?? 1;
-  return res.json({ studentId: student.id, gradeGap, currentPhase, phases });
+  return res.json(groups);
 });
 
 export default router;

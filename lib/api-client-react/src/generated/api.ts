@@ -56,6 +56,11 @@ import type {
   PracticeSessionInput,
   ProfileUpdate,
   QuestionGenerateInput,
+  ReteachCompleteInput,
+  ReteachCompleteResult,
+  ReteachLesson,
+  ReteachLessonInput,
+  ReteachingSkillGroup,
   SkillMastery,
   SkillTree,
   StudentAnalytics,
@@ -2675,6 +2680,226 @@ export function useGetInterventionPathway<TData = Awaited<ReturnType<typeof getI
 
 
 
+
+export const getGetReteachingSkillsUrl = () => {
+
+
+
+
+  return `/api/students/intervention`
+}
+
+/**
+ * @summary Get skills flagged for reteaching (needsReteaching = true), grouped by domain
+ */
+export const getReteachingSkills = async ( options?: RequestInit): Promise<ReteachingSkillGroup[]> => {
+
+  return customFetch<ReteachingSkillGroup[]>(getGetReteachingSkillsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReteachingSkillsQueryKey = () => {
+    return [
+    `/api/students/intervention`
+    ] as const;
+    }
+
+
+export const getGetReteachingSkillsQueryOptions = <TData = Awaited<ReturnType<typeof getReteachingSkills>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReteachingSkills>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReteachingSkillsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReteachingSkills>>> = ({ signal }) => getReteachingSkills({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReteachingSkills>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetReteachingSkillsQueryResult = NonNullable<Awaited<ReturnType<typeof getReteachingSkills>>>
+export type GetReteachingSkillsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get skills flagged for reteaching (needsReteaching = true), grouped by domain
+ */
+
+export function useGetReteachingSkills<TData = Awaited<ReturnType<typeof getReteachingSkills>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReteachingSkills>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetReteachingSkillsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCompleteReteachingUrl = (skillCode: string,) => {
+
+
+
+
+  return `/api/students/reteaching/${skillCode}/complete`
+}
+
+/**
+ * @summary Complete a reteaching session; clears needsReteaching if score >= 2/3
+ */
+export const completeReteaching = async (skillCode: string,
+    reteachCompleteInput: ReteachCompleteInput, options?: RequestInit): Promise<ReteachCompleteResult> => {
+
+  return customFetch<ReteachCompleteResult>(getCompleteReteachingUrl(skillCode),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reteachCompleteInput,)
+  }
+);}
+
+
+
+
+export const getCompleteReteachingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeReteaching>>, TError,{skillCode: string;data: BodyType<ReteachCompleteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeReteaching>>, TError,{skillCode: string;data: BodyType<ReteachCompleteInput>}, TContext> => {
+
+const mutationKey = ['completeReteaching'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeReteaching>>, {skillCode: string;data: BodyType<ReteachCompleteInput>}> = (props) => {
+          const {skillCode,data} = props ?? {};
+
+          return  completeReteaching(skillCode,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteReteachingMutationResult = NonNullable<Awaited<ReturnType<typeof completeReteaching>>>
+    export type CompleteReteachingMutationBody = BodyType<ReteachCompleteInput>
+    export type CompleteReteachingMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Complete a reteaching session; clears needsReteaching if score >= 2/3
+ */
+export const useCompleteReteaching = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeReteaching>>, TError,{skillCode: string;data: BodyType<ReteachCompleteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeReteaching>>,
+        TError,
+        {skillCode: string;data: BodyType<ReteachCompleteInput>},
+        TContext
+      > => {
+      return useMutation(getCompleteReteachingMutationOptions(options));
+    }
+
+export const getGenerateReteachLessonUrl = () => {
+
+
+
+
+  return `/api/ai/reteach`
+}
+
+/**
+ * @summary Generate a 3-part micro-lesson for a skill needing reteaching
+ */
+export const generateReteachLesson = async (reteachLessonInput: ReteachLessonInput, options?: RequestInit): Promise<ReteachLesson> => {
+
+  return customFetch<ReteachLesson>(getGenerateReteachLessonUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reteachLessonInput,)
+  }
+);}
+
+
+
+
+export const getGenerateReteachLessonMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateReteachLesson>>, TError,{data: BodyType<ReteachLessonInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateReteachLesson>>, TError,{data: BodyType<ReteachLessonInput>}, TContext> => {
+
+const mutationKey = ['generateReteachLesson'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateReteachLesson>>, {data: BodyType<ReteachLessonInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateReteachLesson(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateReteachLessonMutationResult = NonNullable<Awaited<ReturnType<typeof generateReteachLesson>>>
+    export type GenerateReteachLessonMutationBody = BodyType<ReteachLessonInput>
+    export type GenerateReteachLessonMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Generate a 3-part micro-lesson for a skill needing reteaching
+ */
+export const useGenerateReteachLesson = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateReteachLesson>>, TError,{data: BodyType<ReteachLessonInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateReteachLesson>>,
+        TError,
+        {data: BodyType<ReteachLessonInput>},
+        TContext
+      > => {
+      return useMutation(getGenerateReteachLessonMutationOptions(options));
+    }
 
 export const getListTeacherClassesUrl = () => {
 

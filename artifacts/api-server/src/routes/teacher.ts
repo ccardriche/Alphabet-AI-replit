@@ -7,7 +7,7 @@ import {
   studentProfilesTable,
   skillMasteryTable,
 } from "@workspace/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { requireTeacher } from "../middlewares/requireTeacher";
 
@@ -162,11 +162,24 @@ router.get("/teacher/dashboard", requireTeacher, async (req, res) => {
     ? totalMasteries.reduce((sum, m) => sum + m.smartScore, 0) / totalMasteries.length
     : 0;
 
+  // Count total needsReteaching=true records across all class students
+  const needsReteachingCount = studentIds.length > 0
+    ? (await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(skillMasteryTable)
+        .where(and(
+          inArray(skillMasteryTable.studentId, studentIds),
+          eq(skillMasteryTable.needsReteaching, true),
+        ))
+      )[0]?.count ?? 0
+    : 0;
+
   return res.json({
     totalStudents: students.length,
     onTrackCount: onTrack,
     interventionCount: intervention,
     notTestedCount: notTested,
+    needsReteachingCount,
     avgClassScore: Math.round(avgClassScore),
     recentAlerts: alerts,
   });

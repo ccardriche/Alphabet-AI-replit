@@ -53,7 +53,7 @@ export default function TeacherDashboard() {
           {[
             { label: "Total Students", value: dashboard?.totalStudents ?? 0, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
             { label: "On Track", value: dashboard?.onTrackCount ?? 0, icon: CheckCircle, color: "text-green-600", bg: "bg-green-50" },
-            { label: "Need Intervention", value: dashboard?.interventionCount ?? 0, icon: AlertTriangle, color: "text-red-500", bg: "bg-red-50" },
+            { label: "Skills for Reteaching", value: (dashboard as any)?.needsReteachingCount ?? 0, icon: AlertTriangle, color: "text-red-500", bg: "bg-red-50", description: "Skills flagged across all students" },
             { label: "Not Tested", value: dashboard?.notTestedCount ?? 0, icon: TrendingUp, color: "text-amber-600", bg: "bg-amber-50" },
           ].map(({ label, value, icon: Icon, color, bg }, i) => (
             <motion.div key={label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>

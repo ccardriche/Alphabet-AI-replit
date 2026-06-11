@@ -194,6 +194,111 @@ router.post("/tts", async (req, res) => {
   }
 });
 
+// POST /api/ai/reteach — generate 3-part micro-lesson for a skill needing reteaching
+router.post("/ai/reteach", async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+  const { skillCode, skillName, gradeLevel, interests = [], consecutiveErrors = 0 } = req.body as {
+    skillCode: string;
+    skillName: string;
+    gradeLevel: string;
+    interests?: string[];
+    consecutiveErrors?: number;
+  };
+  if (!skillCode || !skillName || !gradeLevel) {
+    return res.status(400).json({ error: "skillCode, skillName, and gradeLevel are required" });
+  }
+
+  const interestCtx = interests.length > 0 ? `The student is interested in: ${interests.join(", ")}.` : "";
+  const errorCtx = consecutiveErrors > 0 ? `The student has made ${consecutiveErrors} consecutive errors on this skill.` : "";
+
+  const fallbackLesson = {
+    skillCode,
+    skillName,
+    explanation: `Let's revisit "${skillName}" together with a fresh approach. ${skillName} is an important reading skill that helps you understand texts more deeply. Think of it like a puzzle — we'll break it into smaller pieces so each part makes sense before we move on.`,
+    guidedQuestions: [
+      {
+        id: "gq1",
+        questionText: `Which sentence best shows an example of ${skillName}?`,
+        options: [
+          { id: "a", text: "The sun rises in the east every morning." },
+          { id: "b", text: "The author compares the storm to a roaring lion to show its power." },
+          { id: "c", text: "She walked slowly down the hallway." },
+          { id: "d", text: "The book has 200 pages." },
+        ],
+        correctOptionId: "b",
+        explanation: `Option B demonstrates ${skillName} because it shows how an author uses language to convey meaning beyond the literal words.`,
+      },
+      {
+        id: "gq2",
+        questionText: `When a reader applies ${skillName}, what are they most likely doing?`,
+        options: [
+          { id: "a", text: "Skipping hard words" },
+          { id: "b", text: "Reading only the first sentence of each paragraph" },
+          { id: "c", text: "Using clues from the text to deepen understanding" },
+          { id: "d", text: "Memorizing every fact" },
+        ],
+        correctOptionId: "c",
+        explanation: `Correct! ${skillName} involves actively using text clues to build deeper understanding.`,
+      },
+    ],
+    checkQuestion: {
+      id: "cq1",
+      questionText: `Now you try! In a story where a character "dragged her feet all the way to school," what does this tell us about the character?`,
+      options: [
+        { id: "a", text: "She runs fast" },
+        { id: "b", text: "She is excited and eager" },
+        { id: "c", text: "She is reluctant or unhappy about going to school" },
+        { id: "d", text: "She has heavy shoes" },
+      ],
+      correctOptionId: "c",
+      explanation: `"Dragged her feet" is an expression suggesting reluctance — she did not want to go to school. This requires applying ${skillName} to read beyond the literal meaning.`,
+    },
+  };
+
+  try {
+    const systemPrompt = `You are an expert ELA teacher creating a targeted reteaching micro-lesson for a grade ${gradeLevel} student who is struggling with "${skillName}". ${interestCtx} ${errorCtx} Use simpler language and a different instructional approach than typical. Return valid JSON only.`;
+
+    const userPrompt = `Create a 3-part reteaching micro-lesson for the ELA skill "${skillName}" (skill code: ${skillCode}).
+
+The lesson must have:
+1. "explanation" — A clear, simple 2-3 sentence explanation of the skill using plain language. If the student has interests, weave them in naturally.
+2. "guidedQuestions" — Array of exactly 2 multiple-choice questions that scaffold the concept (easier than grade level). Each question must have id, questionText, options (array of {id, text} with ids a/b/c/d), correctOptionId, and explanation.
+3. "checkQuestion" — 1 final check question that tests independent understanding. Same format as guided questions.
+
+Return JSON:
+{
+  "explanation": "...",
+  "guidedQuestions": [
+    {"id": "gq1", "questionText": "...", "options": [{"id": "a", "text": "..."}, ...], "correctOptionId": "a", "explanation": "..."},
+    {"id": "gq2", "questionText": "...", "options": [...], "correctOptionId": "b", "explanation": "..."}
+  ],
+  "checkQuestion": {"id": "cq1", "questionText": "...", "options": [...], "correctOptionId": "c", "explanation": "..."}
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1200,
+    });
+
+    const parsed = JSON.parse(completion.choices[0].message.content ?? "{}");
+    return res.json({
+      skillCode,
+      skillName,
+      explanation: parsed.explanation ?? fallbackLesson.explanation,
+      guidedQuestions: parsed.guidedQuestions ?? fallbackLesson.guidedQuestions,
+      checkQuestion: parsed.checkQuestion ?? fallbackLesson.checkQuestion,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Reteach generation error, using fallback");
+    return res.json(fallbackLesson);
+  }
+});
+
 // GET /api/me — current user profile
 router.get("/me", async (req, res) => {
   if (!req.isAuthenticated()) {

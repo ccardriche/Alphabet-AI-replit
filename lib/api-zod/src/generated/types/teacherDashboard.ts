@@ -12,6 +12,8 @@ export interface TeacherDashboard {
   interventionCount: number;
   onTrackCount: number;
   notTestedCount: number;
+  /** Total number of skill_mastery records with needsReteaching=true across all class students */
+  needsReteachingCount?: number;
   avgClassScore?: number;
   recentAlerts: TeacherAlert[];
 }

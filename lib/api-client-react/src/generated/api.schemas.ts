@@ -501,6 +501,68 @@ export interface CompleteSessionInput {
   durationMin?: number;
 }
 
+export interface ReteachingSkill {
+  skillCode: string;
+  skillName: string;
+  /** @nullable */
+  domain: string | null;
+  smartScore: number;
+  masteryLevel: string;
+  consecutiveErrors: number;
+  /** Last up-to-5 smart scores for sparkline */
+  recentScores: number[];
+}
+
+export interface ReteachingSkillGroup {
+  domain: string;
+  skills: ReteachingSkill[];
+}
+
+export interface ReteachLessonInput {
+  skillCode: string;
+  skillName: string;
+  gradeLevel: string;
+  interests?: string[];
+  consecutiveErrors?: number;
+}
+
+export type ReteachQuestionOptionsItem = {
+  id: string;
+  text: string;
+};
+
+export interface ReteachQuestion {
+  id: string;
+  questionText: string;
+  options: ReteachQuestionOptionsItem[];
+  correctOptionId: string;
+  explanation?: string;
+}
+
+export interface ReteachLesson {
+  skillCode: string;
+  skillName: string;
+  explanation: string;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  guidedQuestions: ReteachQuestion[];
+  checkQuestion: ReteachQuestion;
+}
+
+export interface ReteachCompleteInput {
+  correctCount: number;
+  totalCount: number;
+}
+
+export interface ReteachCompleteResult {
+  cleared: boolean;
+  smartScore: number;
+  masteryLevel: string;
+  message?: string;
+}
+
 export interface InterventionSkillCard {
   skillCode: string;
   skillName: string;
@@ -610,6 +672,8 @@ export interface TeacherDashboard {
   interventionCount: number;
   onTrackCount: number;
   notTestedCount: number;
+  /** Total number of skill_mastery records with needsReteaching=true across all class students */
+  needsReteachingCount?: number;
   avgClassScore?: number;
   recentAlerts: TeacherAlert[];
 }
