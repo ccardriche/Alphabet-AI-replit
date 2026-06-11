@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useGetStudentProfile, getGetStudentProfileQueryKey } from "@workspace/api-client-react";
-import { STUDENT_ID_KEY } from "@/lib/constants";
+import { STUDENT_ID_KEY, PLACEMENT_COMPLETED_KEY } from "@/lib/constants";
 
 export default function RequireOnboarding({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
@@ -13,7 +13,10 @@ export default function RequireOnboarding({ children }: { children: React.ReactN
     },
   });
 
-  const isComplete = !!profile && !!(profile as any).preAssessmentCompleted;
+  // Trust the localStorage flag as a fast-path: Placement.tsx writes it the
+  // moment the server confirms completion, before the profile query refetches.
+  const placementLocalFlag = localStorage.getItem(PLACEMENT_COMPLETED_KEY) === "true";
+  const isComplete = !!profile && (!!(profile as any).preAssessmentCompleted || placementLocalFlag);
 
   useEffect(() => {
     if (isLoading) return;
