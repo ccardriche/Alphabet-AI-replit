@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@workspace/replit-auth-web";
 import { ErrorBoundary, FullPageErrorBoundary } from "@/components/ErrorBoundary";
+import RequireOnboarding from "@/components/RequireOnboarding";
 
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Landing = lazy(() => import("@/pages/Landing"));
@@ -84,37 +85,47 @@ function Router() {
         </Route>
         <Route path="/dashboard">
           <AuthGuard>
-            <ErrorBoundary>
-              <StudentDashboard />
-            </ErrorBoundary>
+            <RequireOnboarding>
+              <ErrorBoundary>
+                <StudentDashboard />
+              </ErrorBoundary>
+            </RequireOnboarding>
           </AuthGuard>
         </Route>
         <Route path="/practice">
           <AuthGuard>
-            <ErrorBoundary>
-              <Practice />
-            </ErrorBoundary>
+            <RequireOnboarding>
+              <ErrorBoundary>
+                <Practice />
+              </ErrorBoundary>
+            </RequireOnboarding>
           </AuthGuard>
         </Route>
         <Route path="/skill-tree">
           <AuthGuard>
-            <ErrorBoundary>
-              <SkillTree />
-            </ErrorBoundary>
+            <RequireOnboarding>
+              <ErrorBoundary>
+                <SkillTree />
+              </ErrorBoundary>
+            </RequireOnboarding>
           </AuthGuard>
         </Route>
         <Route path="/intervention">
           <AuthGuard>
-            <ErrorBoundary>
-              <Intervention />
-            </ErrorBoundary>
+            <RequireOnboarding>
+              <ErrorBoundary>
+                <Intervention />
+              </ErrorBoundary>
+            </RequireOnboarding>
           </AuthGuard>
         </Route>
         <Route path="/progress">
           <AuthGuard>
-            <ErrorBoundary>
-              <Progress />
-            </ErrorBoundary>
+            <RequireOnboarding>
+              <ErrorBoundary>
+                <Progress />
+              </ErrorBoundary>
+            </RequireOnboarding>
           </AuthGuard>
         </Route>
         <Route path="/teacher">

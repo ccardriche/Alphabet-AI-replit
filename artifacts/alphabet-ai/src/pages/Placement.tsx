@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { PLACEMENT_COMPLETED_KEY } from "@/lib/constants";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useStartPlacement,
@@ -79,6 +80,7 @@ export default function Placement() {
       });
       setQuestionCount((c) => c + 1);
       if ((res as any).complete) {
+        localStorage.setItem(PLACEMENT_COMPLETED_KEY, "true");
         queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey() });
         setTimeout(() => setPhase("result"), 1200);
       }
