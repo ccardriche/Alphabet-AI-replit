@@ -27,6 +27,9 @@ import type {
   AuthUserEnvelope,
   BadgeStatus,
   BeginBrowserLoginParams,
+  CaregiverProfile,
+  CaregiverProfileInput,
+  CaregiverStudentOverview,
   ClassAnalytics,
   ClassHeatmap,
   CompleteSessionInput,
@@ -4080,6 +4083,231 @@ export function useGetClassAnalytics<TData = Awaited<ReturnType<typeof getClassA
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetClassAnalyticsQueryOptions(classId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetCaregiverProfileUrl = () => {
+
+
+
+
+  return `/api/caregiver/profile`
+}
+
+/**
+ * @summary Get caregiver profile and linked student
+ */
+export const getCaregiverProfile = async ( options?: RequestInit): Promise<CaregiverProfile> => {
+
+  return customFetch<CaregiverProfile>(getGetCaregiverProfileUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCaregiverProfileQueryKey = () => {
+    return [
+    `/api/caregiver/profile`
+    ] as const;
+    }
+
+
+export const getGetCaregiverProfileQueryOptions = <TData = Awaited<ReturnType<typeof getCaregiverProfile>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCaregiverProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCaregiverProfileQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCaregiverProfile>>> = ({ signal }) => getCaregiverProfile({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCaregiverProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCaregiverProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getCaregiverProfile>>>
+export type GetCaregiverProfileQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get caregiver profile and linked student
+ */
+
+export function useGetCaregiverProfile<TData = Awaited<ReturnType<typeof getCaregiverProfile>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCaregiverProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCaregiverProfileQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpsertCaregiverProfileUrl = () => {
+
+
+
+
+  return `/api/caregiver/profile`
+}
+
+/**
+ * @summary Create or update caregiver profile and link student
+ */
+export const upsertCaregiverProfile = async (caregiverProfileInput: CaregiverProfileInput, options?: RequestInit): Promise<CaregiverProfile> => {
+
+  return customFetch<CaregiverProfile>(getUpsertCaregiverProfileUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      caregiverProfileInput,)
+  }
+);}
+
+
+
+
+export const getUpsertCaregiverProfileMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertCaregiverProfile>>, TError,{data: BodyType<CaregiverProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertCaregiverProfile>>, TError,{data: BodyType<CaregiverProfileInput>}, TContext> => {
+
+const mutationKey = ['upsertCaregiverProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertCaregiverProfile>>, {data: BodyType<CaregiverProfileInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  upsertCaregiverProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertCaregiverProfileMutationResult = NonNullable<Awaited<ReturnType<typeof upsertCaregiverProfile>>>
+    export type UpsertCaregiverProfileMutationBody = BodyType<CaregiverProfileInput>
+    export type UpsertCaregiverProfileMutationError = ErrorType<void>
+
+    /**
+ * @summary Create or update caregiver profile and link student
+ */
+export const useUpsertCaregiverProfile = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertCaregiverProfile>>, TError,{data: BodyType<CaregiverProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertCaregiverProfile>>,
+        TError,
+        {data: BodyType<CaregiverProfileInput>},
+        TContext
+      > => {
+      return useMutation(getUpsertCaregiverProfileMutationOptions(options));
+    }
+
+export const getGetCaregiverStudentOverviewUrl = () => {
+
+
+
+
+  return `/api/caregiver/student`
+}
+
+/**
+ * @summary Get full overview of the linked student
+ */
+export const getCaregiverStudentOverview = async ( options?: RequestInit): Promise<CaregiverStudentOverview> => {
+
+  return customFetch<CaregiverStudentOverview>(getGetCaregiverStudentOverviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCaregiverStudentOverviewQueryKey = () => {
+    return [
+    `/api/caregiver/student`
+    ] as const;
+    }
+
+
+export const getGetCaregiverStudentOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getCaregiverStudentOverview>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCaregiverStudentOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCaregiverStudentOverviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCaregiverStudentOverview>>> = ({ signal }) => getCaregiverStudentOverview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCaregiverStudentOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCaregiverStudentOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getCaregiverStudentOverview>>>
+export type GetCaregiverStudentOverviewQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get full overview of the linked student
+ */
+
+export function useGetCaregiverStudentOverview<TData = Awaited<ReturnType<typeof getCaregiverStudentOverview>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCaregiverStudentOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCaregiverStudentOverviewQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

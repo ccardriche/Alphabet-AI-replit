@@ -1020,6 +1020,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/ClassAnalytics"
 
+  /caregiver/profile:
+    get:
+      operationId: getCaregiverProfile
+      tags: [caregiver]
+      summary: Get caregiver profile and linked student
+      responses:
+        "200":
+          description: Caregiver profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaregiverProfile"
+        "404":
+          description: No profile yet
+    put:
+      operationId: upsertCaregiverProfile
+      tags: [caregiver]
+      summary: Create or update caregiver profile and link student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaregiverProfileInput"
+      responses:
+        "200":
+          description: Updated caregiver profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaregiverProfile"
+        "201":
+          description: Created caregiver profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaregiverProfile"
+        "404":
+          description: Student code not found
+
+  /caregiver/student:
+    get:
+      operationId: getCaregiverStudentOverview
+      tags: [caregiver]
+      summary: Get full overview of the linked student
+      responses:
+        "200":
+          description: Student overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaregiverStudentOverview"
+        "404":
+          description: No linked student
+
 components:
   schemas:
     HealthStatus:
@@ -2292,6 +2347,149 @@ components:
           type: string
         count:
           type: integer
+
+    # ── CAREGIVER ─────────────────────────────────────────────────────────────
+    CaregiverProfile:
+      type: object
+      required: [id, userId, relationship]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        studentId:
+          type: ["string", "null"]
+        relationship:
+          type: string
+        createdAt:
+          type: string
+        student:
+          oneOf:
+            - $ref: "#/components/schemas/CaregiverLinkedStudent"
+            - type: "null"
+
+    CaregiverLinkedStudent:
+      type: object
+      required: [id, displayName, grade]
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        grade:
+          type: string
+        readingLevel:
+          type: ["string", "null"]
+        placementPathway:
+          type: ["string", "null"]
+        preAssessmentCompleted:
+          type: boolean
+
+    CaregiverProfileInput:
+      type: object
+      properties:
+        relationship:
+          type: string
+        studentCode:
+          type: string
+          minLength: 6
+          maxLength: 12
+
+    CaregiverStudentOverview:
+      type: object
+      required: [student, domainMastery, recentSessions, strongSkills, weakSkills, totalPracticed, totalMastered, overallAvgScore]
+      properties:
+        student:
+          type: object
+          required: [id, displayName, grade]
+          properties:
+            id:
+              type: string
+            displayName:
+              type: string
+            grade:
+              type: string
+            readingLevel:
+              type: ["string", "null"]
+            placementPathway:
+              type: ["string", "null"]
+            preAssessmentCompleted:
+              type: boolean
+            totalXp:
+              type: ["integer", "null"]
+            currentStreak:
+              type: ["integer", "null"]
+            studentCode:
+              type: string
+        domainMastery:
+          type: array
+          items:
+            $ref: "#/components/schemas/CaregiverDomainMastery"
+        recentSessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CaregiverRecentSession"
+        strongSkills:
+          type: array
+          items:
+            $ref: "#/components/schemas/CaregiverSkillSummary"
+        weakSkills:
+          type: array
+          items:
+            $ref: "#/components/schemas/CaregiverSkillSummary"
+        totalPracticed:
+          type: integer
+        totalMastered:
+          type: integer
+        overallAvgScore:
+          type: number
+
+    CaregiverDomainMastery:
+      type: object
+      required: [domain, domainCode, total, practiced, mastered, avgScore]
+      properties:
+        domain:
+          type: string
+        domainCode:
+          type: string
+        total:
+          type: integer
+        practiced:
+          type: integer
+        mastered:
+          type: integer
+        avgScore:
+          type: number
+
+    CaregiverRecentSession:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+        startedAt:
+          type: ["string", "null"]
+        completedAt:
+          type: ["string", "null"]
+        activitiesCompleted:
+          type: ["integer", "null"]
+        correctCount:
+          type: ["integer", "null"]
+        xpEarned:
+          type: ["integer", "null"]
+
+    CaregiverSkillSummary:
+      type: object
+      required: [skillCode, domain, smartScore, masteryLevel]
+      properties:
+        skillCode:
+          type: string
+        domain:
+          type: string
+        smartScore:
+          type: number
+        masteryLevel:
+          type: string
 
   parameters:
     AuthorizationSessionHeader:

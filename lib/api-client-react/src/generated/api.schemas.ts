@@ -803,6 +803,93 @@ export interface ClassAnalytics {
   scoreDistribution: ScoreBucket[];
 }
 
+export interface CaregiverLinkedStudent {
+  id: string;
+  displayName: string;
+  grade: string;
+  /** @nullable */
+  readingLevel?: string | null;
+  /** @nullable */
+  placementPathway?: string | null;
+  preAssessmentCompleted?: boolean;
+}
+
+export interface CaregiverProfile {
+  id: string;
+  userId: string;
+  /** @nullable */
+  studentId?: string | null;
+  relationship: string;
+  createdAt?: string;
+  student?: CaregiverLinkedStudent | null;
+}
+
+export interface CaregiverProfileInput {
+  relationship?: string;
+  /**
+     * @minLength 6
+     * @maxLength 12
+     */
+  studentCode?: string;
+}
+
+export type CaregiverStudentOverviewStudent = {
+  id: string;
+  displayName: string;
+  grade: string;
+  /** @nullable */
+  readingLevel?: string | null;
+  /** @nullable */
+  placementPathway?: string | null;
+  preAssessmentCompleted?: boolean;
+  /** @nullable */
+  totalXp?: number | null;
+  /** @nullable */
+  currentStreak?: number | null;
+  studentCode?: string;
+};
+
+export interface CaregiverDomainMastery {
+  domain: string;
+  domainCode: string;
+  total: number;
+  practiced: number;
+  mastered: number;
+  avgScore: number;
+}
+
+export interface CaregiverRecentSession {
+  id: string;
+  /** @nullable */
+  startedAt?: string | null;
+  /** @nullable */
+  completedAt?: string | null;
+  /** @nullable */
+  activitiesCompleted?: number | null;
+  /** @nullable */
+  correctCount?: number | null;
+  /** @nullable */
+  xpEarned?: number | null;
+}
+
+export interface CaregiverSkillSummary {
+  skillCode: string;
+  domain: string;
+  smartScore: number;
+  masteryLevel: string;
+}
+
+export interface CaregiverStudentOverview {
+  student: CaregiverStudentOverviewStudent;
+  domainMastery: CaregiverDomainMastery[];
+  recentSessions: CaregiverRecentSession[];
+  strongSkills: CaregiverSkillSummary[];
+  weakSkills: CaregiverSkillSummary[];
+  totalPracticed: number;
+  totalMastered: number;
+  overallAvgScore: number;
+}
+
 /**
  * Opaque session token — Bearer <sid>.
  */

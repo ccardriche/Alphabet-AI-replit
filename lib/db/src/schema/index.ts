@@ -7,3 +7,4 @@ export * from "./sessions";
 export * from "./teacher";
 export * from "./question-cache";
 export * from "./gamification";
+export * from "./caregiver";

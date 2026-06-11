@@ -21,6 +21,8 @@ const TeacherRoster = lazy(() => import("@/pages/TeacherRoster"));
 const BookUpload = lazy(() => import("@/pages/BookUpload"));
 const ExerciseGenerator = lazy(() => import("@/pages/ExerciseGenerator"));
 const ClassAnalytics = lazy(() => import("@/pages/ClassAnalytics"));
+const CaregiverOnboarding = lazy(() => import("@/pages/CaregiverOnboarding"));
+const CaregiverDashboard = lazy(() => import("@/pages/CaregiverDashboard"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -143,6 +145,20 @@ function Router() {
           <AuthGuard>
             <ErrorBoundary>
               <ClassAnalytics />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/caregiver-onboarding">
+          <AuthGuard>
+            <ErrorBoundary>
+              <CaregiverOnboarding />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/caregiver">
+          <AuthGuard>
+            <ErrorBoundary>
+              <CaregiverDashboard />
             </ErrorBoundary>
           </AuthGuard>
         </Route>

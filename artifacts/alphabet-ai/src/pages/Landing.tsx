@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { GraduationCap, BookOpen, Users, ArrowRight, Star, TrendingUp, Brain, LogIn } from "lucide-react";
+import { GraduationCap, BookOpen, Users, ArrowRight, Star, TrendingUp, Brain, LogIn, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useGetStudentProfile, getGetStudentProfileQueryKey } from "@workspace/api-client-react";
+import { useGetStudentProfile, getGetStudentProfileQueryKey, useGetCaregiverProfile, getGetCaregiverProfileQueryKey } from "@workspace/api-client-react";
 
 const ROLE_KEY = "alphabet_ai_role";
 
@@ -20,6 +20,14 @@ export default function Landing() {
     query: {
       queryKey: getGetStudentProfileQueryKey(),
       enabled: isAuthenticated,
+      retry: false,
+    },
+  });
+
+  const { data: caregiverProfile, isLoading: caregiverLoading } = useGetCaregiverProfile({
+    query: {
+      queryKey: getGetCaregiverProfileQueryKey(),
+      enabled: isAuthenticated && !!profileError,
       retry: false,
     },
   });
@@ -40,12 +48,22 @@ export default function Landing() {
         setLocation("/teacher");
       } else if (role === "student") {
         setLocation("/onboarding");
+      } else if (role === "caregiver") {
+        setLocation("/caregiver");
       }
       // No role yet → stay on landing to show role-selection UI
     }
   }, [authLoading, isAuthenticated, profileLoading, profile, profileError, setLocation]);
 
-  async function handleRole(role: "student" | "teacher") {
+  // Auto-redirect returning caregivers
+  useEffect(() => {
+    if (!isAuthenticated || profileLoading || caregiverLoading) return;
+    if (profileError && caregiverProfile) {
+      setLocation("/caregiver");
+    }
+  }, [isAuthenticated, profileLoading, caregiverLoading, profileError, caregiverProfile, setLocation]);
+
+  async function handleRole(role: "student" | "teacher" | "caregiver") {
     sessionStorage.setItem(ROLE_KEY, role);
     try {
       await fetch("/api/me", {
@@ -53,7 +71,9 @@ export default function Landing() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role }),
       });
-      setLocation(role === "student" ? "/onboarding" : "/teacher");
+      if (role === "student") setLocation("/onboarding");
+      else if (role === "teacher") setLocation("/teacher");
+      else setLocation("/caregiver-onboarding");
     } catch (error) {
       console.error("Failed to set role:", error);
     }
@@ -132,7 +152,7 @@ export default function Landing() {
                 <ArrowRight className="w-4 h-4" />
               </Button>
             ) : (
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
                 <Button
                   size="lg"
                   className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold px-8 gap-2"
@@ -152,6 +172,16 @@ export default function Landing() {
                 >
                   <Users className="w-4 h-4" />
                   I am a Teacher
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-rose-700 text-rose-300 hover:bg-rose-900/30 hover:text-rose-200 font-semibold px-8 gap-2"
+                  onClick={() => handleRole("caregiver")}
+                  data-testid="btn-caregiver-login"
+                >
+                  <Heart className="w-4 h-4" />
+                  I am a Family Member
                 </Button>
               </div>
             )}

@@ -1193,3 +1193,102 @@ export const GetClassAnalyticsResponse = zod.object({
 })
 
 
+/**
+ * @summary Get caregiver profile and linked student
+ */
+export const GetCaregiverProfileResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "studentId": zod.string().nullish(),
+  "relationship": zod.string(),
+  "createdAt": zod.string().optional(),
+  "student": zod.union([zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "grade": zod.string(),
+  "readingLevel": zod.string().nullish(),
+  "placementPathway": zod.string().nullish(),
+  "preAssessmentCompleted": zod.boolean().optional()
+}),zod.null()]).optional()
+})
+
+
+/**
+ * @summary Create or update caregiver profile and link student
+ */
+export const upsertCaregiverProfileBodyStudentCodeMin = 6;
+export const upsertCaregiverProfileBodyStudentCodeMax = 12;
+
+
+
+export const UpsertCaregiverProfileBody = zod.object({
+  "relationship": zod.string().optional(),
+  "studentCode": zod.string().min(upsertCaregiverProfileBodyStudentCodeMin).max(upsertCaregiverProfileBodyStudentCodeMax).optional()
+})
+
+export const UpsertCaregiverProfileResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "studentId": zod.string().nullish(),
+  "relationship": zod.string(),
+  "createdAt": zod.string().optional(),
+  "student": zod.union([zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "grade": zod.string(),
+  "readingLevel": zod.string().nullish(),
+  "placementPathway": zod.string().nullish(),
+  "preAssessmentCompleted": zod.boolean().optional()
+}),zod.null()]).optional()
+})
+
+
+/**
+ * @summary Get full overview of the linked student
+ */
+export const GetCaregiverStudentOverviewResponse = zod.object({
+  "student": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "grade": zod.string(),
+  "readingLevel": zod.string().nullish(),
+  "placementPathway": zod.string().nullish(),
+  "preAssessmentCompleted": zod.boolean().optional(),
+  "totalXp": zod.number().nullish(),
+  "currentStreak": zod.number().nullish(),
+  "studentCode": zod.string().optional()
+}),
+  "domainMastery": zod.array(zod.object({
+  "domain": zod.string(),
+  "domainCode": zod.string(),
+  "total": zod.number(),
+  "practiced": zod.number(),
+  "mastered": zod.number(),
+  "avgScore": zod.number()
+})),
+  "recentSessions": zod.array(zod.object({
+  "id": zod.string(),
+  "startedAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "activitiesCompleted": zod.number().nullish(),
+  "correctCount": zod.number().nullish(),
+  "xpEarned": zod.number().nullish()
+})),
+  "strongSkills": zod.array(zod.object({
+  "skillCode": zod.string(),
+  "domain": zod.string(),
+  "smartScore": zod.number(),
+  "masteryLevel": zod.string()
+})),
+  "weakSkills": zod.array(zod.object({
+  "skillCode": zod.string(),
+  "domain": zod.string(),
+  "smartScore": zod.number(),
+  "masteryLevel": zod.string()
+})),
+  "totalPracticed": zod.number(),
+  "totalMastered": zod.number(),
+  "overallAvgScore": zod.number()
+})
+
+
