@@ -5,8 +5,7 @@ import { GraduationCap, BookOpen, Users, ArrowRight, Star, TrendingUp, Brain, Lo
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useGetStudentProfile, getGetStudentProfileQueryKey, useGetCaregiverProfile, getGetCaregiverProfileQueryKey } from "@workspace/api-client-react";
-
-const ROLE_KEY = "alphabet_ai_role";
+import { ROLE_KEY, STUDENT_ID_KEY, PLACEMENT_COMPLETED_KEY } from "@/lib/constants";
 
 export default function Landing() {
   const { isAuthenticated, isLoading: authLoading, login } = useAuth();
@@ -34,6 +33,16 @@ export default function Landing() {
 
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
+
+    // Fast-path: returning student already has a local student ID stored from
+    // a previous session. Skip role-selection and route immediately.
+    const storedStudentId = localStorage.getItem(STUDENT_ID_KEY);
+    if (storedStudentId) {
+      const placementDone = localStorage.getItem(PLACEMENT_COMPLETED_KEY);
+      setLocation(placementDone ? "/dashboard" : "/placement");
+      return;
+    }
+
     if (profileLoading) return;
 
     if (profile) {
