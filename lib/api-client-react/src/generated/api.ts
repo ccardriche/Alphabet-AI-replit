@@ -35,6 +35,7 @@ import type {
   CompleteSessionInput,
   DailyXp,
   ElaSkill,
+  ErrorResponse,
   ExerciseGenerateInput,
   FluencyPassage,
   FluencySessionInput,
@@ -87,6 +88,7 @@ import type {
   StudentProfileInput,
   StudentProfileUpdate,
   StudentProgress,
+  StudentProgressDetail,
   StudentProjectDetail,
   StudentProjectSummary,
   StudentRosterEntry,
@@ -3595,6 +3597,83 @@ export const useResolveTeacherAlert = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getResolveTeacherAlertMutationOptions(options));
     }
+
+export const getGetTeacherStudentProgressUrl = (studentId: string,) => {
+
+
+
+
+  return `/api/teacher/students/${studentId}/progress`
+}
+
+/**
+ * @summary Get detailed skill-by-skill progress for a single student
+ */
+export const getTeacherStudentProgress = async (studentId: string, options?: RequestInit): Promise<StudentProgressDetail> => {
+
+  return customFetch<StudentProgressDetail>(getGetTeacherStudentProgressUrl(studentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTeacherStudentProgressQueryKey = (studentId: string,) => {
+    return [
+    `/api/teacher/students/${studentId}/progress`
+    ] as const;
+    }
+
+
+export const getGetTeacherStudentProgressQueryOptions = <TData = Awaited<ReturnType<typeof getTeacherStudentProgress>>, TError = ErrorType<ErrorResponse>>(studentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTeacherStudentProgress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTeacherStudentProgressQueryKey(studentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTeacherStudentProgress>>> = ({ signal }) => getTeacherStudentProgress(studentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(studentId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTeacherStudentProgress>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTeacherStudentProgressQueryResult = NonNullable<Awaited<ReturnType<typeof getTeacherStudentProgress>>>
+export type GetTeacherStudentProgressQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get detailed skill-by-skill progress for a single student
+ */
+
+export function useGetTeacherStudentProgress<TData = Awaited<ReturnType<typeof getTeacherStudentProgress>>, TError = ErrorType<ErrorResponse>>(
+ studentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTeacherStudentProgress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTeacherStudentProgressQueryOptions(studentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getJoinClassByCodeUrl = () => {
 

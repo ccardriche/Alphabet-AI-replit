@@ -891,6 +891,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/ResolveAlertResult"
 
+  /teacher/students/{studentId}/progress:
+    get:
+      operationId: getTeacherStudentProgress
+      tags: [teacher]
+      summary: Get detailed skill-by-skill progress for a single student
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Student progress detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProgressDetail"
+        "403":
+          description: Student not in any of this teacher's classes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /teacher/classes/join:
     post:
       operationId: joinClassByCode
@@ -2233,6 +2264,13 @@ components:
         masteryPercentage:
           type: number
 
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
     # ── TEACHER ───────────────────────────────────────────────────────────────
     TeacherClass:
       type: object
@@ -2319,6 +2357,98 @@ components:
           type: string
         score:
           type: number
+
+    SkillProgressItem:
+      type: object
+      required: [skillCode, skillName, domain, smartScore, masteryLevel, practiceCount, correctCount, needsReteaching, thetaSe, lastPracticed]
+      properties:
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        domain:
+          type: string
+        smartScore:
+          type: number
+        masteryLevel:
+          type: string
+        practiceCount:
+          type: integer
+        correctCount:
+          type: integer
+        consecutiveErrors:
+          type: integer
+        needsReteaching:
+          type: boolean
+        thetaSe:
+          type: number
+        approachingMastery:
+          type: boolean
+          description: True when smartScore >= 65 and < 87 (likely to tip over with one more session)
+        lastPracticed:
+          type: ["string", "null"]
+        masteredAt:
+          type: ["string", "null"]
+
+    StudentRecentSession:
+      type: object
+      required: [id, type, completedAt, xpEarned, correctAnswers, totalQuestions]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [practice, placement]
+        focusDomain:
+          type: ["string", "null"]
+        focusSkillCode:
+          type: ["string", "null"]
+        correctAnswers:
+          type: integer
+        totalQuestions:
+          type: integer
+        xpEarned:
+          type: integer
+        durationMin:
+          type: ["number", "null"]
+        completedAt:
+          type: string
+
+    StudentProgressDetail:
+      type: object
+      required: [studentId, displayName, grade, totalXp, currentStreak, domainScores, skills, recentSessions]
+      properties:
+        studentId:
+          type: string
+        displayName:
+          type: string
+        grade:
+          type: string
+        diagnosedGradeLevel:
+          type: ["string", "null"]
+        placementPathway:
+          type: ["string", "null"]
+        totalXp:
+          type: integer
+        currentStreak:
+          type: integer
+        avgSmartScore:
+          type: number
+        status:
+          type: string
+          enum: [on_track, intervention, not_tested]
+        domainScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainScore"
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillProgressItem"
+        recentSessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentRecentSession"
 
     ClassHeatmap:
       type: object

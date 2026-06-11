@@ -589,6 +589,10 @@ export interface InterventionPathway {
   phases: InterventionPhase[];
 }
 
+export interface ErrorResponse {
+  error: string;
+}
+
 export interface TeacherClass {
   id: string;
   teacherId: string;
@@ -645,6 +649,74 @@ export interface StudentRosterEntry {
   lastActive: string | null;
   status?: StudentRosterEntryStatus;
   domainScores?: DomainScore[];
+}
+
+export interface SkillProgressItem {
+  skillCode: string;
+  skillName: string;
+  domain: string;
+  smartScore: number;
+  masteryLevel: string;
+  practiceCount: number;
+  correctCount: number;
+  consecutiveErrors?: number;
+  needsReteaching: boolean;
+  thetaSe: number;
+  /** True when smartScore >= 65 and < 87 (likely to tip over with one more session) */
+  approachingMastery?: boolean;
+  /** @nullable */
+  lastPracticed: string | null;
+  /** @nullable */
+  masteredAt?: string | null;
+}
+
+export type StudentRecentSessionType = typeof StudentRecentSessionType[keyof typeof StudentRecentSessionType];
+
+
+export const StudentRecentSessionType = {
+  practice: 'practice',
+  placement: 'placement',
+} as const;
+
+export interface StudentRecentSession {
+  id: string;
+  type: StudentRecentSessionType;
+  /** @nullable */
+  focusDomain?: string | null;
+  /** @nullable */
+  focusSkillCode?: string | null;
+  correctAnswers: number;
+  totalQuestions: number;
+  xpEarned: number;
+  /** @nullable */
+  durationMin?: number | null;
+  completedAt: string;
+}
+
+export type StudentProgressDetailStatus = typeof StudentProgressDetailStatus[keyof typeof StudentProgressDetailStatus];
+
+
+export const StudentProgressDetailStatus = {
+  on_track: 'on_track',
+  intervention: 'intervention',
+  not_tested: 'not_tested',
+} as const;
+
+export interface StudentProgressDetail {
+  studentId: string;
+  displayName: string;
+  grade: string;
+  /** @nullable */
+  diagnosedGradeLevel?: string | null;
+  /** @nullable */
+  placementPathway?: string | null;
+  totalXp: number;
+  currentStreak: number;
+  avgSmartScore?: number;
+  status?: StudentProgressDetailStatus;
+  domainScores: DomainScore[];
+  skills: SkillProgressItem[];
+  recentSessions: StudentRecentSession[];
 }
 
 export interface HeatmapStudent {

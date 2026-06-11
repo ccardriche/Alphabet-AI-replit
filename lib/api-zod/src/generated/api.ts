@@ -1048,6 +1048,56 @@ export const ResolveTeacherAlertResponse = zod.object({
 
 
 /**
+ * @summary Get detailed skill-by-skill progress for a single student
+ */
+export const GetTeacherStudentProgressParams = zod.object({
+  "studentId": zod.coerce.string()
+})
+
+export const GetTeacherStudentProgressResponse = zod.object({
+  "studentId": zod.string(),
+  "displayName": zod.string(),
+  "grade": zod.string(),
+  "diagnosedGradeLevel": zod.string().nullish(),
+  "placementPathway": zod.string().nullish(),
+  "totalXp": zod.number(),
+  "currentStreak": zod.number(),
+  "avgSmartScore": zod.number().optional(),
+  "status": zod.enum(['on_track', 'intervention', 'not_tested']).optional(),
+  "domainScores": zod.array(zod.object({
+  "domainCode": zod.string(),
+  "score": zod.number()
+})),
+  "skills": zod.array(zod.object({
+  "skillCode": zod.string(),
+  "skillName": zod.string(),
+  "domain": zod.string(),
+  "smartScore": zod.number(),
+  "masteryLevel": zod.string(),
+  "practiceCount": zod.number(),
+  "correctCount": zod.number(),
+  "consecutiveErrors": zod.number().optional(),
+  "needsReteaching": zod.boolean(),
+  "thetaSe": zod.number(),
+  "approachingMastery": zod.boolean().optional().describe('True when smartScore >= 65 and < 87 (likely to tip over with one more session)'),
+  "lastPracticed": zod.string().nullable(),
+  "masteredAt": zod.string().nullish()
+})),
+  "recentSessions": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['practice', 'placement']),
+  "focusDomain": zod.string().nullish(),
+  "focusSkillCode": zod.string().nullish(),
+  "correctAnswers": zod.number(),
+  "totalQuestions": zod.number(),
+  "xpEarned": zod.number(),
+  "durationMin": zod.number().nullish(),
+  "completedAt": zod.string()
+}))
+})
+
+
+/**
  * @summary Student joins a class using a class join code
  */
 export const JoinClassByCodeBody = zod.object({

@@ -6,8 +6,9 @@ import {
   teacherAlertsTable,
   studentProfilesTable,
   skillMasteryTable,
+  practiceSessionsTable,
 } from "@workspace/db/schema";
-import { eq, and, inArray, sql, gte, or, lt, isNotNull } from "drizzle-orm";
+import { eq, and, inArray, sql, gte, or, lt, isNotNull, desc } from "drizzle-orm";
 import crypto from "crypto";
 import { requireTeacher } from "../middlewares/requireTeacher";
 
@@ -468,6 +469,100 @@ router.get("/teacher/analytics/:classId", requireTeacher, async (req, res) => {
     masteryDistribution,
     skillsNeedingAttention,
     scoreDistribution,
+  });
+});
+
+// GET /api/teacher/students/:studentId/progress
+router.get("/teacher/students/:studentId/progress", requireTeacher, async (req, res) => {
+  const teacherId = req.user!.id;
+  const studentId = req.params.studentId as string;
+
+  // Verify this student is in at least one of the teacher's classes
+  const teacherStudentIds = await getTeacherStudentIds(teacherId);
+  if (!teacherStudentIds.includes(studentId)) {
+    return res.status(403).json({ error: "Student is not enrolled in any of your classes" });
+  }
+
+  // Load student profile
+  const [student] = await db.select().from(studentProfilesTable)
+    .where(eq(studentProfilesTable.id, studentId))
+    .limit(1);
+  if (!student) return res.status(404).json({ error: "Student not found" });
+
+  // Load all skill mastery
+  const mastery = await db.select().from(skillMasteryTable)
+    .where(eq(skillMasteryTable.studentId, studentId))
+    .limit(300);
+
+  // Compute domain scores
+  const domains = ["RL", "RI", "RF", "W", "SL", "L"];
+  const domainScores = domains.map((code) => {
+    const dm = mastery.filter((m) => m.domain === code);
+    return {
+      domainCode: code,
+      score: dm.length > 0 ? dm.reduce((sum, m) => sum + m.smartScore, 0) / dm.length : 0,
+    };
+  });
+
+  const avgSmartScore = mastery.length > 0
+    ? mastery.reduce((sum, m) => sum + m.smartScore, 0) / mastery.length
+    : 0;
+  const hasNeedsReteaching = mastery.some((m) => m.needsReteaching);
+  const status = !student.preAssessmentCompleted
+    ? "not_tested"
+    : (hasNeedsReteaching || avgSmartScore < 70 ? "intervention" : "on_track");
+
+  // Build skill list with approachingMastery flag
+  const skills = mastery.map((m) => ({
+    skillCode: m.skillCode,
+    skillName: m.skillName,
+    domain: m.domain ?? "",
+    smartScore: m.smartScore,
+    masteryLevel: m.masteryLevel,
+    practiceCount: m.practiceCount,
+    correctCount: m.correctCount,
+    consecutiveErrors: m.consecutiveErrors,
+    needsReteaching: m.needsReteaching,
+    thetaSe: m.thetaSe,
+    approachingMastery: m.smartScore >= 65 && m.smartScore < 87,
+    lastPracticed: m.lastPracticed?.toISOString() ?? null,
+    masteredAt: m.masteredAt?.toISOString() ?? null,
+  })).sort((a, b) => (a.domain ?? "").localeCompare(b.domain ?? "") || a.skillCode.localeCompare(b.skillCode));
+
+  // Load recent completed practice sessions (last 10)
+  const practiceSessions = await db.select().from(practiceSessionsTable)
+    .where(and(
+      eq(practiceSessionsTable.studentId, studentId),
+      eq(practiceSessionsTable.status, "completed"),
+    ))
+    .orderBy(desc(practiceSessionsTable.completedAt))
+    .limit(10);
+
+  const recentSessions = practiceSessions.map((ps) => ({
+    id: ps.id,
+    type: "practice" as const,
+    focusDomain: ps.focusDomain ?? null,
+    focusSkillCode: ps.focusSkillCode ?? null,
+    correctAnswers: ps.correctAnswers,
+    totalQuestions: ps.totalQuestions,
+    xpEarned: ps.xpEarned,
+    durationMin: ps.durationMin ?? null,
+    completedAt: ps.completedAt!.toISOString(),
+  }));
+
+  return res.json({
+    studentId: student.id,
+    displayName: student.displayName,
+    grade: student.grade,
+    diagnosedGradeLevel: student.diagnosedGradeLevel ?? null,
+    placementPathway: student.placementPathway ?? null,
+    totalXp: student.totalXp,
+    currentStreak: student.currentStreak,
+    avgSmartScore: Math.round(avgSmartScore),
+    status,
+    domainScores,
+    skills,
+    recentSessions,
   });
 });
 

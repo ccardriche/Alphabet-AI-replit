@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   useListClassStudents,
@@ -7,7 +8,7 @@ import {
   getListClassStudentsQueryKey,
   getGetClassHeatmapQueryKey,
 } from "@workspace/api-client-react";
-import { Users, TrendingUp, AlertTriangle, CheckCircle, RefreshCw, Share2 } from "lucide-react";
+import { Users, TrendingUp, AlertTriangle, CheckCircle, RefreshCw, Share2, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ const FILTERS = ["All", "On Track", "Intervention", "Not Tested"] as const;
 type Filter = typeof FILTERS[number];
 
 export default function TeacherRoster() {
+  const [, setLocation] = useLocation();
   const [filter, setFilter] = useState<Filter>("All");
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
@@ -202,11 +204,15 @@ export default function TeacherRoster() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: i * 0.03 }}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="hover:bg-indigo-50/40 transition-colors cursor-pointer"
                       data-testid={`student-row-${s.studentId}`}
+                      onClick={() => s.studentId && setLocation(`/teacher/students/${s.studentId}`)}
                     >
-                      <td className="px-4 py-3 sticky left-0 bg-white">
-                        <p className="font-medium truncate">{s.displayName}</p>
+                      <td className="px-4 py-3 sticky left-0 bg-white group-hover:bg-indigo-50/40">
+                        <div className="flex items-center gap-1">
+                          <p className="font-medium truncate">{s.displayName}</p>
+                          <ChevronRight className="w-3 h-3 text-indigo-400 opacity-0 group-hover:opacity-100 shrink-0 ml-auto" />
+                        </div>
                         {s.gradeGap != null && s.gradeGap > 0 && (
                           <p className="text-xs text-red-500">-{s.gradeGap} grade gap</p>
                         )}
