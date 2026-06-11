@@ -8,3 +8,4 @@ export * from "./teacher";
 export * from "./question-cache";
 export * from "./gamification";
 export * from "./caregiver";
+export * from "./fluency";

@@ -24,6 +24,7 @@ const ClassAnalytics = lazy(() => import("@/pages/ClassAnalytics"));
 const CaregiverOnboarding = lazy(() => import("@/pages/CaregiverOnboarding"));
 const CaregiverDashboard = lazy(() => import("@/pages/CaregiverDashboard"));
 const IdentityQuest = lazy(() => import("@/pages/IdentityQuest"));
+const Fluency = lazy(() => import("@/pages/Fluency"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -167,6 +168,13 @@ function Router() {
           <AuthGuard>
             <ErrorBoundary>
               <IdentityQuest />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/fluency">
+          <AuthGuard>
+            <ErrorBoundary>
+              <Fluency />
             </ErrorBoundary>
           </AuthGuard>
         </Route>

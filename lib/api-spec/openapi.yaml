@@ -1094,6 +1094,53 @@ paths:
         "404":
           description: No linked student
 
+  /fluency/passage:
+    get:
+      operationId: getFluencyPassage
+      tags: [fluency]
+      summary: Get a grade-appropriate reading passage for the current student
+      responses:
+        "200":
+          description: A reading passage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FluencyPassage"
+        "404":
+          description: No student profile
+
+  /fluency/sessions:
+    get:
+      operationId: getFluencyHistory
+      tags: [fluency]
+      summary: Get fluency session history for the current student
+      responses:
+        "200":
+          description: List of past sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FluencySessionRecord"
+    post:
+      operationId: saveFluencySession
+      tags: [fluency]
+      summary: Save a completed fluency session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FluencySessionInput"
+      responses:
+        "201":
+          description: Saved session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FluencySessionRecord"
+
 components:
   schemas:
     HealthStatus:
@@ -2366,6 +2413,78 @@ components:
           type: string
         count:
           type: integer
+
+    # ── FLUENCY ───────────────────────────────────────────────────────────────
+    FluencyPassage:
+      type: object
+      required: [key, title, gradeLevel, text, wordCount]
+      properties:
+        key:
+          type: string
+        title:
+          type: string
+        gradeLevel:
+          type: string
+        text:
+          type: string
+        wordCount:
+          type: integer
+
+    FluencySessionInput:
+      type: object
+      required: [passageKey, passageTitle, gradeLevel, totalWords, wordsRead, errors, durationSeconds, wpm, wcpm, accuracyPercent]
+      properties:
+        passageKey:
+          type: string
+        passageTitle:
+          type: string
+        gradeLevel:
+          type: string
+        totalWords:
+          type: integer
+        wordsRead:
+          type: integer
+        errors:
+          type: integer
+        durationSeconds:
+          type: integer
+        wpm:
+          type: integer
+        wcpm:
+          type: integer
+        accuracyPercent:
+          type: integer
+
+    FluencySessionRecord:
+      type: object
+      required: [id, studentId, passageKey, passageTitle, gradeLevel, totalWords, wordsRead, errors, durationSeconds, wpm, wcpm, accuracyPercent, createdAt]
+      properties:
+        id:
+          type: string
+        studentId:
+          type: string
+        passageKey:
+          type: string
+        passageTitle:
+          type: string
+        gradeLevel:
+          type: string
+        totalWords:
+          type: integer
+        wordsRead:
+          type: integer
+        errors:
+          type: integer
+        durationSeconds:
+          type: integer
+        wpm:
+          type: integer
+        wcpm:
+          type: integer
+        accuracyPercent:
+          type: integer
+        createdAt:
+          type: string
 
     # ── IDENTITY QUEST ───────────────────────────────────────────────────────
     IdentityQuestInput:

@@ -36,6 +36,9 @@ import type {
   DailyXp,
   ElaSkill,
   ExerciseGenerateInput,
+  FluencyPassage,
+  FluencySessionInput,
+  FluencySessionRecord,
   GetSkillTreeParams,
   HandleBrowserLoginCallbackParams,
   HealthStatus,
@@ -4392,4 +4395,229 @@ export function useGetCaregiverStudentOverview<TData = Awaited<ReturnType<typeof
 
 
 
+
+export const getGetFluencyPassageUrl = () => {
+
+
+
+
+  return `/api/fluency/passage`
+}
+
+/**
+ * @summary Get a grade-appropriate reading passage for the current student
+ */
+export const getFluencyPassage = async ( options?: RequestInit): Promise<FluencyPassage> => {
+
+  return customFetch<FluencyPassage>(getGetFluencyPassageUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFluencyPassageQueryKey = () => {
+    return [
+    `/api/fluency/passage`
+    ] as const;
+    }
+
+
+export const getGetFluencyPassageQueryOptions = <TData = Awaited<ReturnType<typeof getFluencyPassage>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFluencyPassage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFluencyPassageQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFluencyPassage>>> = ({ signal }) => getFluencyPassage({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFluencyPassage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFluencyPassageQueryResult = NonNullable<Awaited<ReturnType<typeof getFluencyPassage>>>
+export type GetFluencyPassageQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get a grade-appropriate reading passage for the current student
+ */
+
+export function useGetFluencyPassage<TData = Awaited<ReturnType<typeof getFluencyPassage>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFluencyPassage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFluencyPassageQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetFluencyHistoryUrl = () => {
+
+
+
+
+  return `/api/fluency/sessions`
+}
+
+/**
+ * @summary Get fluency session history for the current student
+ */
+export const getFluencyHistory = async ( options?: RequestInit): Promise<FluencySessionRecord[]> => {
+
+  return customFetch<FluencySessionRecord[]>(getGetFluencyHistoryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFluencyHistoryQueryKey = () => {
+    return [
+    `/api/fluency/sessions`
+    ] as const;
+    }
+
+
+export const getGetFluencyHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getFluencyHistory>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFluencyHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFluencyHistoryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFluencyHistory>>> = ({ signal }) => getFluencyHistory({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFluencyHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFluencyHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getFluencyHistory>>>
+export type GetFluencyHistoryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get fluency session history for the current student
+ */
+
+export function useGetFluencyHistory<TData = Awaited<ReturnType<typeof getFluencyHistory>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFluencyHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFluencyHistoryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSaveFluencySessionUrl = () => {
+
+
+
+
+  return `/api/fluency/sessions`
+}
+
+/**
+ * @summary Save a completed fluency session
+ */
+export const saveFluencySession = async (fluencySessionInput: FluencySessionInput, options?: RequestInit): Promise<FluencySessionRecord> => {
+
+  return customFetch<FluencySessionRecord>(getSaveFluencySessionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      fluencySessionInput,)
+  }
+);}
+
+
+
+
+export const getSaveFluencySessionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveFluencySession>>, TError,{data: BodyType<FluencySessionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveFluencySession>>, TError,{data: BodyType<FluencySessionInput>}, TContext> => {
+
+const mutationKey = ['saveFluencySession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveFluencySession>>, {data: BodyType<FluencySessionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveFluencySession(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveFluencySessionMutationResult = NonNullable<Awaited<ReturnType<typeof saveFluencySession>>>
+    export type SaveFluencySessionMutationBody = BodyType<FluencySessionInput>
+    export type SaveFluencySessionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Save a completed fluency session
+ */
+export const useSaveFluencySession = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveFluencySession>>, TError,{data: BodyType<FluencySessionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveFluencySession>>,
+        TError,
+        {data: BodyType<FluencySessionInput>},
+        TContext
+      > => {
+      return useMutation(getSaveFluencySessionMutationOptions(options));
+    }
 

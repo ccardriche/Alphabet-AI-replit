@@ -1337,3 +1337,53 @@ export const GetCaregiverStudentOverviewResponse = zod.object({
 })
 
 
+/**
+ * @summary Get a grade-appropriate reading passage for the current student
+ */
+export const GetFluencyPassageResponse = zod.object({
+  "key": zod.string(),
+  "title": zod.string(),
+  "gradeLevel": zod.string(),
+  "text": zod.string(),
+  "wordCount": zod.number()
+})
+
+
+/**
+ * @summary Get fluency session history for the current student
+ */
+export const GetFluencyHistoryResponseItem = zod.object({
+  "id": zod.string(),
+  "studentId": zod.string(),
+  "passageKey": zod.string(),
+  "passageTitle": zod.string(),
+  "gradeLevel": zod.string(),
+  "totalWords": zod.number(),
+  "wordsRead": zod.number(),
+  "errors": zod.number(),
+  "durationSeconds": zod.number(),
+  "wpm": zod.number(),
+  "wcpm": zod.number(),
+  "accuracyPercent": zod.number(),
+  "createdAt": zod.string()
+})
+export const GetFluencyHistoryResponse = zod.array(GetFluencyHistoryResponseItem)
+
+
+/**
+ * @summary Save a completed fluency session
+ */
+export const SaveFluencySessionBody = zod.object({
+  "passageKey": zod.string(),
+  "passageTitle": zod.string(),
+  "gradeLevel": zod.string(),
+  "totalWords": zod.number(),
+  "wordsRead": zod.number(),
+  "errors": zod.number(),
+  "durationSeconds": zod.number(),
+  "wpm": zod.number(),
+  "wcpm": zod.number(),
+  "accuracyPercent": zod.number()
+})
+
+

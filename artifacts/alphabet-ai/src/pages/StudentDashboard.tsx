@@ -4,8 +4,10 @@ import {
   useGetStudentDashboard,
   useGetMasterySummary,
   useGetMyBadges,
+  useGetFluencyHistory,
 } from "@workspace/api-client-react";
-import { Zap, Flame, Trophy, BookOpen, ArrowRight, TrendingUp, Lock, CheckCircle2 } from "lucide-react";
+import { Zap, Flame, Trophy, BookOpen, ArrowRight, TrendingUp, Lock, CheckCircle2, Timer } from "lucide-react";
+import { getWPMLabel } from "@/lib/passages";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,6 +47,7 @@ export default function StudentDashboard() {
   const { data, isLoading } = useGetStudentDashboard();
   const { data: summary } = useGetMasterySummary();
   const { data: allBadges = [] } = useGetMyBadges();
+  const { data: fluencyHistory = [] } = useGetFluencyHistory();
 
   if (isLoading) return (
     <Layout>
@@ -280,6 +283,38 @@ export default function StudentDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Fluency Card */}
+        {profile?.preAssessmentCompleted && (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-5 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                  <Timer className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Reading Fluency</p>
+                  {(fluencyHistory as any[]).length > 0 ? (
+                    <p className={`text-xs font-medium ${getWPMLabel((fluencyHistory as any[])[0].wcpm, (fluencyHistory as any[])[0].gradeLevel).color}`}>
+                      Last: {(fluencyHistory as any[])[0].wcpm} WCPM · {getWPMLabel((fluencyHistory as any[])[0].wcpm, (fluencyHistory as any[])[0].gradeLevel).label}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No sessions yet — try a 60-second reading!</p>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation("/fluency")}
+                className="gap-1.5 shrink-0"
+                data-testid="btn-fluency"
+              >
+                {(fluencyHistory as any[]).length > 0 ? "Practice" : "Start"} <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Badges */}
         <Card className="border-0 shadow-sm">

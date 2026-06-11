@@ -803,6 +803,43 @@ export interface ClassAnalytics {
   scoreDistribution: ScoreBucket[];
 }
 
+export interface FluencyPassage {
+  key: string;
+  title: string;
+  gradeLevel: string;
+  text: string;
+  wordCount: number;
+}
+
+export interface FluencySessionInput {
+  passageKey: string;
+  passageTitle: string;
+  gradeLevel: string;
+  totalWords: number;
+  wordsRead: number;
+  errors: number;
+  durationSeconds: number;
+  wpm: number;
+  wcpm: number;
+  accuracyPercent: number;
+}
+
+export interface FluencySessionRecord {
+  id: string;
+  studentId: string;
+  passageKey: string;
+  passageTitle: string;
+  gradeLevel: string;
+  totalWords: number;
+  wordsRead: number;
+  errors: number;
+  durationSeconds: number;
+  wpm: number;
+  wcpm: number;
+  accuracyPercent: number;
+  createdAt: string;
+}
+
 export interface IdentityQuestInput {
   pronouns?: string;
   avatar?: string;
