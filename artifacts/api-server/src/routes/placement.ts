@@ -8,6 +8,15 @@ import {
 } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import OpenAI from "openai";
+import {
+  eapEstimate,
+  selectNextItem,
+  thetaToGrade,
+  thetaToPathway,
+  shouldStopPlacement,
+  type IrtResponse,
+  type ItemCandidate,
+} from "@workspace/irt-engine";
 
 const router = Router();
 
@@ -44,6 +53,7 @@ router.post("/placement/start", async (req, res) => {
     status: "in_progress",
     theta: 0,
     thetaSe: 999,
+    fisherInfo: 0,
     answers: [],
   }).returning();
 
@@ -54,9 +64,19 @@ router.post("/placement/start", async (req, res) => {
 router.get("/placement/:sessionId/next", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
-  const [session] = await db.select().from(placementSessionsTable).where(eq(placementSessionsTable.id, sessionId)).limit(1);
+
+  const [session] = await db
+    .select()
+    .from(placementSessionsTable)
+    .where(eq(placementSessionsTable.id, sessionId))
+    .limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
-  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user!.id)).limit(1))[0];
+
+  const owner = (await db
+    .select()
+    .from(studentProfilesTable)
+    .where(eq(studentProfilesTable.userId, req.user!.id))
+    .limit(1))[0];
   if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
   if (session.status === "completed") {
@@ -64,18 +84,30 @@ router.get("/placement/:sessionId/next", async (req, res) => {
   }
 
   const answers = (session.answers as any[]) ?? [];
-  const usedCodes = answers.map((a: any) => a.skillCode).filter(Boolean);
+  const usedCodes = new Set(answers.map((a: any) => a.skillCode).filter(Boolean));
 
-  const skills = await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.active, true)).limit(200);
-  const available = skills.filter((s) => !usedCodes.includes(s.skillCode));
+  const allSkills = await db
+    .select()
+    .from(elaSkillsTable)
+    .where(eq(elaSkillsTable.active, true))
+    .limit(200);
 
-  available.sort((a, b) => Math.abs(a.difficulty - session.theta) - Math.abs(b.difficulty - session.theta));
-  const targetSkill = available[0];
+  // Build candidate list for MFI selection
+  const candidates: ItemCandidate[] = allSkills
+    .filter((s) => !usedCodes.has(s.skillCode))
+    .map((s) => ({
+      skillCode: s.skillCode,
+      a: s.discrimination ?? 1.0,
+      b: s.difficulty ?? 0,
+      c: s.guessing ?? 0.25,
+    }));
 
-  if (!targetSkill) {
+  const targetCandidate = selectNextItem(session.theta, candidates);
+  if (!targetCandidate) {
     return res.status(400).json({ error: "No more skills available" });
   }
 
+  const targetSkill = allSkills.find((s) => s.skillCode === targetCandidate.skillCode)!;
   const student = await getStudentByUserId(req.user!.id);
 
   let question;
@@ -90,50 +122,77 @@ router.get("/placement/:sessionId/next", async (req, res) => {
       culturalContext: student?.culturalContext ?? [],
       activityType: "multiple_choice",
     });
-  } catch (e) {
+  } catch {
     question = makeMockQuestion(targetSkill);
   }
 
-  return res.json(question);
+  return res.json({
+    ...question,
+    irt: { a: targetCandidate.a, b: targetCandidate.b, c: targetCandidate.c },
+    currentTheta: session.theta,
+    currentSe: session.thetaSe,
+    questionNumber: answers.length + 1,
+  });
 });
 
 // POST /api/placement/:sessionId/answer
 router.post("/placement/:sessionId/answer", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
-  const { questionId, selectedOptionId, skillCode, correct, timeSpentSeconds } = req.body;
+  const { questionId, selectedOptionId, skillCode, correct, timeSpentSeconds, irt } = req.body;
 
-  const [session] = await db.select().from(placementSessionsTable).where(eq(placementSessionsTable.id, sessionId)).limit(1);
+  const [session] = await db
+    .select()
+    .from(placementSessionsTable)
+    .where(eq(placementSessionsTable.id, sessionId))
+    .limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
-  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user!.id)).limit(1))[0];
+
+  const owner = (await db
+    .select()
+    .from(studentProfilesTable)
+    .where(eq(studentProfilesTable.userId, req.user!.id))
+    .limit(1))[0];
   if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
-  const skill = (await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.skillCode, skillCode)).limit(1))[0];
-  const b = skill?.difficulty ?? 0;
-  const a = skill?.discrimination ?? 1.0;
-  const c = skill?.guessing ?? 0.25;
+  // Retrieve IRT parameters from client payload (returned by /next) or fall back to DB
+  let a: number, b: number, c: number;
+  if (irt && typeof irt.a === "number") {
+    a = irt.a; b = irt.b; c = irt.c;
+  } else {
+    const skill = (await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.skillCode, skillCode)).limit(1))[0];
+    a = skill?.discrimination ?? 1.0;
+    b = skill?.difficulty ?? 0;
+    c = skill?.guessing ?? 0.25;
+  }
 
-  let theta = session.theta;
-  const p = c + (1 - c) / (1 + Math.exp(-a * (theta - b)));
-  const w = p * (1 - p);
-  const newFisherInfo = session.fisherInfo + a * a * w;
-  const gradient = correct ? (1 - p) : -p;
-  theta = theta + (a * gradient) / Math.max(0.1, newFisherInfo);
-  theta = Math.max(-4, Math.min(4, theta));
+  // Append this response and recompute EAP over all responses in the session
+  const prevAnswers = (session.answers as any[]) ?? [];
+  const newAnswer = { questionId, skillCode, correct, timeSpentSeconds, irt: { a, b, c } };
+  const allAnswers = [...prevAnswers, newAnswer];
 
-  const newSe = newFisherInfo > 0 ? 1 / Math.sqrt(newFisherInfo) : 999;
+  const irtResponses: IrtResponse[] = allAnswers.map((ans: any) => ({
+    a: ans.irt?.a ?? 1.0,
+    b: ans.irt?.b ?? 0,
+    c: ans.irt?.c ?? 0.25,
+    correct: ans.correct,
+  }));
 
-  const answers = [...((session.answers as any[]) ?? []), { questionId, skillCode, correct, timeSpentSeconds }];
-  const questionCount = session.questionCount + 1;
+  const { theta, se } = eapEstimate(irtResponses);
+  const questionCount = allAnswers.length;
+  const complete = shouldStopPlacement(questionCount, se);
 
-  const complete = questionCount >= 20 || newSe < 0.35;
-
-  let updates: any = { theta, thetaSe: newSe, fisherInfo: newFisherInfo, questionCount, answers };
+  let updates: any = {
+    theta,
+    thetaSe: se,
+    questionCount,
+    answers: allAnswers,
+  };
 
   if (complete) {
     const diagnosedGrade = thetaToGrade(theta);
     const pathway = thetaToPathway(theta);
-    const correctCount = answers.filter((a: any) => a.correct).length;
+    const correctCount = allAnswers.filter((a: any) => a.correct).length;
     updates = {
       ...updates,
       status: "completed",
@@ -150,44 +209,45 @@ router.post("/placement/:sessionId/answer", async (req, res) => {
     }).where(eq(studentProfilesTable.id, session.studentId));
   }
 
-  const [updated] = await db.update(placementSessionsTable).set(updates).where(eq(placementSessionsTable.id, sessionId)).returning();
-  return res.json({ ...updated, complete });
+  const [updated] = await db
+    .update(placementSessionsTable)
+    .set(updates)
+    .where(eq(placementSessionsTable.id, sessionId))
+    .returning();
+
+  return res.json({
+    ...updated,
+    complete,
+    newTheta: theta,
+    newSe: se,
+  });
 });
 
 // GET /api/placement/:sessionId/result
 router.get("/placement/:sessionId/result", async (req, res) => {
   if (!requireAuth(req, res)) return;
-  const [session] = await db.select().from(placementSessionsTable).where(eq(placementSessionsTable.id, req.params.sessionId)).limit(1);
+  const [session] = await db
+    .select()
+    .from(placementSessionsTable)
+    .where(eq(placementSessionsTable.id, req.params.sessionId))
+    .limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
-  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user!.id)).limit(1))[0];
+
+  const owner = (await db
+    .select()
+    .from(studentProfilesTable)
+    .where(eq(studentProfilesTable.userId, req.user!.id))
+    .limit(1))[0];
   if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
+
   return res.json(session);
 });
 
-function thetaToGrade(theta: number): string {
-  if (theta < -2.5) return "K";
-  if (theta < -2.0) return "1st";
-  if (theta < -1.5) return "2nd";
-  if (theta < -1.0) return "3rd";
-  if (theta < -0.5) return "4th";
-  if (theta < 0.0) return "5th";
-  if (theta < 0.5) return "6th";
-  if (theta < 1.0) return "7th";
-  if (theta < 1.5) return "8th";
-  if (theta < 2.0) return "9th";
-  if (theta < 2.5) return "10th";
-  if (theta < 3.0) return "11th";
-  return "12th";
-}
+// ---------------------------------------------------------------------------
+// Question generation
+// ---------------------------------------------------------------------------
 
-function thetaToPathway(theta: number): string {
-  if (theta < -1.5) return "foundation";
-  if (theta < 0) return "developing";
-  if (theta < 1.5) return "proficient";
-  return "advanced";
-}
-
-async function generateQuestion(params: {
+export async function generateQuestion(params: {
   skillCode: string;
   skillName: string;
   domain: string;
@@ -238,7 +298,14 @@ Only include "passage" if relevant to the question. Make the question culturally
   return JSON.parse(raw);
 }
 
-function makeMockQuestion(skill: { skillCode: string; skillName: string; domain: string; domainCode: string; gradeLevel: string; difficulty: number }) {
+export function makeMockQuestion(skill: {
+  skillCode: string;
+  skillName: string;
+  domain: string;
+  domainCode: string;
+  gradeLevel: string;
+  difficulty: number;
+}) {
   return {
     id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     skillCode: skill.skillCode,
@@ -258,5 +325,4 @@ function makeMockQuestion(skill: { skillCode: string; skillName: string; domain:
   };
 }
 
-export { generateQuestion, makeMockQuestion };
 export default router;

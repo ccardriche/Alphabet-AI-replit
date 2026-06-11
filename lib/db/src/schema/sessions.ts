@@ -30,6 +30,7 @@ export const practiceSessionsTable = pgTable("practice_sessions", {
   xpEarned: integer("xp_earned").notNull().default(0),
   durationMin: real("duration_min"),
   focusDomain: text("focus_domain"),
+  answers: jsonb("answers").default([]),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

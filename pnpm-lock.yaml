@@ -370,6 +370,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/irt-engine':
+        specifier: workspace:*
+        version: link:../../lib/irt-engine
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -648,6 +651,8 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+
+  lib/irt-engine: {}
 
   lib/replit-auth-web:
     dependencies:

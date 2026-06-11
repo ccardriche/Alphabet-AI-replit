@@ -8,10 +8,16 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { generateQuestion, makeMockQuestion } from "./placement";
+import {
+  eapUpdate,
+  selectNextItem,
+  thetaToSmartScore,
+  thetaToMasteryLevel,
+  type IrtResponse,
+  type ItemCandidate,
+} from "@workspace/irt-engine";
 
 const router = Router();
-
-const ACTIVITY_TYPES = ["listen_repeat", "see_tap", "say_it", "write_it", "read_it"];
 
 function requireAuth(req: any, res: any): boolean {
   if (!req.isAuthenticated()) {
@@ -42,6 +48,7 @@ router.post("/practice/start", async (req, res) => {
     studentId: student.id,
     status: "in_progress",
     focusDomain: focusDomain ?? null,
+    answers: [],
   }).returning();
 
   return res.status(201).json(session);
@@ -51,42 +58,74 @@ router.post("/practice/start", async (req, res) => {
 router.get("/practice/:sessionId/next", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
-  const [session] = await db.select().from(practiceSessionsTable).where(eq(practiceSessionsTable.id, sessionId)).limit(1);
+
+  const [session] = await db
+    .select()
+    .from(practiceSessionsTable)
+    .where(eq(practiceSessionsTable.id, sessionId))
+    .limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
-  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user!.id)).limit(1))[0];
+
+  const owner = (await db
+    .select()
+    .from(studentProfilesTable)
+    .where(eq(studentProfilesTable.userId, req.user!.id))
+    .limit(1))[0];
   if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
   const student = await getStudentByUserId(req.user!.id);
-
   const masteryRows = await db
     .select()
     .from(skillMasteryTable)
     .where(eq(skillMasteryTable.studentId, session.studentId))
     .limit(200);
 
-  const skills = await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.active, true)).limit(200);
+  const allSkills = await db
+    .select()
+    .from(elaSkillsTable)
+    .where(eq(elaSkillsTable.active, true))
+    .limit(200);
 
-  let targetSkill;
+  // Filter by focus domain if set
+  const domainSkills = session.focusDomain
+    ? allSkills.filter((s) => s.domainCode === session.focusDomain || s.domain === session.focusDomain)
+    : allSkills;
+
+  // Select target skill: prioritise in-progress skills (not mastered), lowest smartScore first
+  let targetSkill: typeof allSkills[0] | undefined;
   const practicing = masteryRows
     .filter((m) => m.masteryLevel !== "mastered")
     .sort((a, b) => a.smartScore - b.smartScore);
 
   if (practicing.length > 0) {
     const target = practicing[0];
-    targetSkill = skills.find((s) => s.skillCode === target.skillCode);
+    targetSkill = domainSkills.find((s) => s.skillCode === target.skillCode);
   }
 
   if (!targetSkill) {
     const practicedCodes = new Set(masteryRows.map((m) => m.skillCode));
-    const unstartedSkills = skills.filter((s) => !practicedCodes.has(s.skillCode));
-    targetSkill = unstartedSkills[Math.floor(Math.random() * unstartedSkills.length)] ?? skills[0];
+    const unstarted = domainSkills.filter((s) => !practicedCodes.has(s.skillCode));
+    targetSkill = unstarted[Math.floor(Math.random() * unstarted.length)] ?? domainSkills[0] ?? allSkills[0];
   }
 
-  if (!targetSkill) {
-    return res.status(400).json({ error: "No skills available" });
-  }
+  if (!targetSkill) return res.status(400).json({ error: "No skills available" });
 
-  const activityType = ACTIVITY_TYPES[session.activitiesCompleted % ACTIVITY_TYPES.length];
+  // Get the current theta for this skill from mastery record (or default 0)
+  const mastery = masteryRows.find((m) => m.skillCode === targetSkill!.skillCode);
+  const skillTheta = mastery?.theta ?? 0;
+  const skillSe = mastery?.thetaSe ?? 999;
+
+  // MFI item selection: find the best item calibration within this skill's difficulty range
+  // For a single skill, we select a difficulty close to targetSkill.difficulty but use MFI
+  const candidates: ItemCandidate[] = [
+    {
+      skillCode: targetSkill.skillCode,
+      a: targetSkill.discrimination ?? 1.0,
+      b: targetSkill.difficulty ?? 0,
+      c: targetSkill.guessing ?? 0.25,
+    },
+  ];
+  const selected = selectNextItem(skillTheta, candidates) ?? candidates[0];
 
   let question;
   try {
@@ -95,10 +134,10 @@ router.get("/practice/:sessionId/next", async (req, res) => {
       skillName: targetSkill.skillName,
       domain: targetSkill.domain,
       gradeLevel: targetSkill.gradeLevel,
-      difficulty: targetSkill.difficulty,
+      difficulty: selected.b,
       interests: student?.interests ?? [],
       culturalContext: student?.culturalContext ?? [],
-      activityType,
+      activityType: "multiple_choice",
     });
   } catch {
     question = makeMockQuestion(targetSkill);
@@ -110,8 +149,12 @@ router.get("/practice/:sessionId/next", async (req, res) => {
     skillName: targetSkill.skillName,
     domain: targetSkill.domain,
     domainCode: targetSkill.domainCode,
-    activityType,
+    activityType: "multiple_choice",
     question,
+    irt: { a: selected.a, b: selected.b, c: selected.c },
+    currentSkillTheta: skillTheta,
+    currentSkillSe: skillSe,
+    currentSkillSmartScore: thetaToSmartScore(skillTheta),
   });
 });
 
@@ -119,40 +162,66 @@ router.get("/practice/:sessionId/next", async (req, res) => {
 router.post("/practice/:sessionId/answer", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
-  const { questionId, selectedOptionId, correct, skillCode, timeSpentSeconds } = req.body;
+  const { questionId, selectedOptionId, correct, skillCode, timeSpentSeconds, irt } = req.body;
 
-  const [session] = await db.select().from(practiceSessionsTable).where(eq(practiceSessionsTable.id, sessionId)).limit(1);
+  const [session] = await db
+    .select()
+    .from(practiceSessionsTable)
+    .where(eq(practiceSessionsTable.id, sessionId))
+    .limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
-  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user!.id)).limit(1))[0];
+
+  const owner = (await db
+    .select()
+    .from(studentProfilesTable)
+    .where(eq(studentProfilesTable.userId, req.user!.id))
+    .limit(1))[0];
   if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
-  const existingMastery = (await db.select().from(skillMasteryTable).where(
-    and(eq(skillMasteryTable.studentId, session.studentId), eq(skillMasteryTable.skillCode, skillCode))
-  ).limit(1))[0];
+  // IRT parameters from request (returned by /next endpoint)
+  const a: number = irt?.a ?? 1.0;
+  const b: number = irt?.b ?? 0;
+  const c: number = irt?.c ?? 0.25;
 
-  const skill = (await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.skillCode, skillCode)).limit(1))[0];
+  // Load current skill mastery (for existing theta prior)
+  const existingMastery = (await db
+    .select()
+    .from(skillMasteryTable)
+    .where(and(eq(skillMasteryTable.studentId, session.studentId), eq(skillMasteryTable.skillCode, skillCode)))
+    .limit(1))[0];
 
-  const xpEarned = correct ? 10 : 2;
+  const skill = (await db
+    .select()
+    .from(elaSkillsTable)
+    .where(eq(elaSkillsTable.skillCode, skillCode))
+    .limit(1))[0];
+
+  // Update theta using EAP single-step update (Bayesian posterior update)
+  const currentTheta = existingMastery?.theta ?? 0;
+  const currentSe = existingMastery?.thetaSe ?? 999;
+  const resp: IrtResponse = { a, b, c, correct };
+  const { theta: newTheta, se: newSe } = eapUpdate(currentTheta, currentSe, resp);
+
+  const newSmartScore = thetaToSmartScore(newTheta);
+  const newMasteryLevel = thetaToMasteryLevel(newTheta);
+
+  const newCount = (existingMastery?.practiceCount ?? 0) + 1;
+  const newCorrect = (existingMastery?.correctCount ?? 0) + (correct ? 1 : 0);
+  const newConsecutiveErrors = correct ? 0 : (existingMastery?.consecutiveErrors ?? 0) + 1;
+  const needsReteaching = !correct && newConsecutiveErrors >= 2;
 
   if (existingMastery) {
-    const newCount = existingMastery.practiceCount + 1;
-    const newCorrect = existingMastery.correctCount + (correct ? 1 : 0);
-    const newScore = Math.min(100, (newCorrect / newCount) * 100);
-    const masteryLevel =
-      newScore >= 90 ? "mastered"
-      : newScore >= 75 ? "approaching"
-      : newScore >= 50 ? "practicing"
-      : "introduced";
-
     await db.update(skillMasteryTable).set({
+      theta: newTheta,
+      thetaSe: newSe,
+      smartScore: newSmartScore,
+      masteryPercentage: newSmartScore,
+      masteryLevel: newMasteryLevel,
       practiceCount: newCount,
       correctCount: newCorrect,
-      smartScore: newScore,
-      masteryPercentage: newScore,
-      masteryLevel,
+      consecutiveErrors: newConsecutiveErrors,
+      needsReteaching,
       lastPracticed: new Date(),
-      consecutiveErrors: correct ? 0 : (existingMastery.consecutiveErrors + 1),
-      needsReteaching: !correct && existingMastery.consecutiveErrors >= 2,
     }).where(eq(skillMasteryTable.id, existingMastery.id));
   } else {
     await db.insert(skillMasteryTable).values({
@@ -160,27 +229,45 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
       skillCode,
       skillName: skill?.skillName ?? skillCode,
       domain: skill?.domainCode ?? "RL",
-      masteryLevel: correct ? "introduced" : "not_started",
-      smartScore: correct ? 25 : 0,
-      masteryPercentage: correct ? 25 : 0,
+      theta: newTheta,
+      thetaSe: newSe,
+      smartScore: newSmartScore,
+      masteryPercentage: newSmartScore,
+      masteryLevel: newMasteryLevel,
       practiceCount: 1,
       correctCount: correct ? 1 : 0,
+      consecutiveErrors: correct ? 0 : 1,
+      needsReteaching: !correct,
     });
   }
+
+  const xpEarned = correct ? 10 : 2;
+
+  // Append answer to session history
+  const prevAnswers = (session.answers as any[]) ?? [];
+  const newAnswer = { questionId, skillCode, correct, timeSpentSeconds, irt: { a, b, c } };
 
   const [updated] = await db.update(practiceSessionsTable).set({
     activitiesCompleted: session.activitiesCompleted + 1,
     totalQuestions: session.totalQuestions + 1,
     correctAnswers: session.correctAnswers + (correct ? 1 : 0),
     xpEarned: session.xpEarned + xpEarned,
+    answers: [...prevAnswers, newAnswer],
   }).where(eq(practiceSessionsTable.id, sessionId)).returning();
 
-  // Update student XP
   await db.update(studentProfilesTable).set({
     totalXp: sql`${studentProfilesTable.totalXp} + ${xpEarned}`,
   }).where(eq(studentProfilesTable.id, session.studentId));
 
-  return res.json({ ...updated, xpEarned, correct });
+  return res.json({
+    ...updated,
+    xpEarned,
+    correct,
+    newSkillTheta: newTheta,
+    newSkillSe: newSe,
+    newSmartScore,
+    newMasteryLevel,
+  });
 });
 
 // POST /api/practice/:sessionId/complete
@@ -189,27 +276,34 @@ router.post("/practice/:sessionId/complete", async (req, res) => {
   const { sessionId } = req.params;
   const { totalQuestions, correctAnswers, durationMin } = req.body;
 
-  const [session] = await db.select().from(practiceSessionsTable).where(eq(practiceSessionsTable.id, sessionId)).limit(1);
+  const [session] = await db
+    .select()
+    .from(practiceSessionsTable)
+    .where(eq(practiceSessionsTable.id, sessionId))
+    .limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
-  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user!.id)).limit(1))[0];
+
+  const owner = (await db
+    .select()
+    .from(studentProfilesTable)
+    .where(eq(studentProfilesTable.userId, req.user!.id))
+    .limit(1))[0];
   if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
   const [updated] = await db.update(practiceSessionsTable).set({
     status: "completed",
-    totalQuestions: totalQuestions ?? 0,
-    correctAnswers: correctAnswers ?? 0,
+    totalQuestions: totalQuestions ?? session.totalQuestions,
+    correctAnswers: correctAnswers ?? session.correctAnswers,
     durationMin: durationMin ?? null,
     completedAt: new Date(),
   }).where(eq(practiceSessionsTable.id, sessionId)).returning();
 
   if (!updated) return res.status(404).json({ error: "Session not found" });
 
-  // Update streak on session complete
   const student = await getStudentByUserId(req.user!.id);
   if (student) {
     const now = new Date();
-    const lastPracticed = student.updatedAt;
-    const hoursSince = (now.getTime() - lastPracticed.getTime()) / (1000 * 60 * 60);
+    const hoursSince = (now.getTime() - student.updatedAt.getTime()) / (1000 * 60 * 60);
     const newStreak = hoursSince < 48 ? student.currentStreak + 1 : 1;
     await db.update(studentProfilesTable).set({
       currentStreak: newStreak,
@@ -243,8 +337,11 @@ router.get("/students/intervention", async (req, res) => {
   const student = await getStudentByUserId(req.user!.id);
   if (!student) return res.status(404).json({ error: "Student profile not found" });
 
-  const masteryRows = await db.select().from(skillMasteryTable).where(eq(skillMasteryTable.studentId, student.id)).limit(200);
-  const allSkills = await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.active, true)).limit(200);
+  const masteryRows = await db
+    .select()
+    .from(skillMasteryTable)
+    .where(eq(skillMasteryTable.studentId, student.id))
+    .limit(200);
 
   const gradeOrder = ["K","1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th","11th","12th"];
   const enrolledIdx = gradeOrder.indexOf(student.grade ?? "5th");
@@ -266,6 +363,7 @@ router.get("/students/intervention", async (req, res) => {
         masteryLevel: m.masteryLevel,
         smartScore: m.smartScore,
         masteryPercentage: m.masteryPercentage,
+        theta: m.theta,
       })),
     },
     {
@@ -278,6 +376,7 @@ router.get("/students/intervention", async (req, res) => {
         masteryLevel: m.masteryLevel,
         smartScore: m.smartScore,
         masteryPercentage: m.masteryPercentage,
+        theta: m.theta,
       })),
     },
     {
@@ -290,12 +389,12 @@ router.get("/students/intervention", async (req, res) => {
         masteryLevel: m.masteryLevel,
         smartScore: m.smartScore,
         masteryPercentage: m.masteryPercentage,
+        theta: m.theta,
       })),
     },
   ];
 
   const currentPhase = phases.find((p) => p.skills.length > 0)?.phaseNumber ?? 1;
-
   return res.json({ studentId: student.id, gradeGap, currentPhase, phases });
 });
 

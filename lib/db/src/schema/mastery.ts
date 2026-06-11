@@ -11,6 +11,8 @@ export const skillMasteryTable = pgTable("skill_mastery", {
   masteryLevel: text("mastery_level").notNull().default("not_started"),
   masteryPercentage: real("mastery_percentage").notNull().default(0),
   smartScore: real("smart_score").notNull().default(0),
+  theta: real("theta").notNull().default(0),
+  thetaSe: real("theta_se").notNull().default(999),
   practiceCount: integer("practice_count").notNull().default(0),
   correctCount: integer("correct_count").notNull().default(0),
   consecutiveErrors: integer("consecutive_errors").notNull().default(0),
