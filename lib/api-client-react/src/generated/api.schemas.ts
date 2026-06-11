@@ -803,6 +803,31 @@ export interface ClassAnalytics {
   scoreDistribution: ScoreBucket[];
 }
 
+export interface IdentityQuestInput {
+  pronouns?: string;
+  avatar?: string;
+  goals?: string[];
+  learningStyle?: string;
+  interests?: string[];
+  culturalContext?: string[];
+  homeLanguage?: string;
+  musicPreference?: string;
+}
+
+export type IdentityQuestResultNewBadgesItem = {
+  code: string;
+  icon: string;
+  title: string;
+  desc: string;
+  rarity: string;
+};
+
+export interface IdentityQuestResult {
+  profile: StudentProfile;
+  xpAwarded: number;
+  newBadges: IdentityQuestResultNewBadgesItem[];
+}
+
 export interface CaregiverLinkedStudent {
   id: string;
   displayName: string;

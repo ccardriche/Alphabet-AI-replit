@@ -202,6 +202,51 @@ export const UpdateStudentProfileResponse = zod.object({
 
 
 /**
+ * @summary Save Identity Quest answers and award XP + badge
+ */
+export const SaveIdentityQuestBody = zod.object({
+  "pronouns": zod.string().optional(),
+  "avatar": zod.string().optional(),
+  "goals": zod.array(zod.string()).optional(),
+  "learningStyle": zod.string().optional(),
+  "interests": zod.array(zod.string()).optional(),
+  "culturalContext": zod.array(zod.string()).optional(),
+  "homeLanguage": zod.string().optional(),
+  "musicPreference": zod.string().optional()
+})
+
+export const SaveIdentityQuestResponse = zod.object({
+  "profile": zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "grade": zod.string(),
+  "age": zod.number().nullish(),
+  "interests": zod.array(zod.string()).optional(),
+  "musicPreference": zod.string().nullish(),
+  "culturalContext": zod.array(zod.string()).optional(),
+  "homeLanguage": zod.string().nullish(),
+  "readingLevel": zod.string().nullish(),
+  "diagnosedGradeLevel": zod.string().nullish(),
+  "placementPathway": zod.union([zod.literal('foundation'),zod.literal('developing'),zod.literal('proficient'),zod.literal('advanced'),zod.literal(null)]).nullish(),
+  "preAssessmentCompleted": zod.boolean().optional(),
+  "audioEnabled": zod.boolean().optional(),
+  "totalXp": zod.number().optional(),
+  "currentStreak": zod.number().optional(),
+  "createdAt": zod.string().optional()
+}),
+  "xpAwarded": zod.number(),
+  "newBadges": zod.array(zod.object({
+  "code": zod.string(),
+  "icon": zod.string(),
+  "title": zod.string(),
+  "desc": zod.string(),
+  "rarity": zod.string()
+}))
+})
+
+
+/**
  * @summary Get student dashboard summary
  */
 export const GetStudentDashboardResponse = zod.object({

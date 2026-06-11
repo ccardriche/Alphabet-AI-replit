@@ -39,6 +39,8 @@ import type {
   GetSkillTreeParams,
   HandleBrowserLoginCallbackParams,
   HealthStatus,
+  IdentityQuestInput,
+  IdentityQuestResult,
   InterventionPathway,
   JoinClassInput,
   LessonGenerateInput,
@@ -1001,6 +1003,77 @@ export const useUpdateStudentProfile = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateStudentProfileMutationOptions(options));
+    }
+
+export const getSaveIdentityQuestUrl = () => {
+
+
+
+
+  return `/api/students/identity`
+}
+
+/**
+ * @summary Save Identity Quest answers and award XP + badge
+ */
+export const saveIdentityQuest = async (identityQuestInput: IdentityQuestInput, options?: RequestInit): Promise<IdentityQuestResult> => {
+
+  return customFetch<IdentityQuestResult>(getSaveIdentityQuestUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      identityQuestInput,)
+  }
+);}
+
+
+
+
+export const getSaveIdentityQuestMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveIdentityQuest>>, TError,{data: BodyType<IdentityQuestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveIdentityQuest>>, TError,{data: BodyType<IdentityQuestInput>}, TContext> => {
+
+const mutationKey = ['saveIdentityQuest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveIdentityQuest>>, {data: BodyType<IdentityQuestInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveIdentityQuest(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveIdentityQuestMutationResult = NonNullable<Awaited<ReturnType<typeof saveIdentityQuest>>>
+    export type SaveIdentityQuestMutationBody = BodyType<IdentityQuestInput>
+    export type SaveIdentityQuestMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Save Identity Quest answers and award XP + badge
+ */
+export const useSaveIdentityQuest = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveIdentityQuest>>, TError,{data: BodyType<IdentityQuestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveIdentityQuest>>,
+        TError,
+        {data: BodyType<IdentityQuestInput>},
+        TContext
+      > => {
+      return useMutation(getSaveIdentityQuestMutationOptions(options));
     }
 
 export const getGetStudentDashboardUrl = () => {

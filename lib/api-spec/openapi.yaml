@@ -242,6 +242,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/StudentProfile"
 
+  /students/identity:
+    put:
+      operationId: saveIdentityQuest
+      tags: [students]
+      summary: Save Identity Quest answers and award XP + badge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdentityQuestInput"
+      responses:
+        "200":
+          description: Updated profile + new badges
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityQuestResult"
+
   /students/dashboard:
     get:
       operationId: getStudentDashboard
@@ -2347,6 +2366,58 @@ components:
           type: string
         count:
           type: integer
+
+    # ── IDENTITY QUEST ───────────────────────────────────────────────────────
+    IdentityQuestInput:
+      type: object
+      properties:
+        pronouns:
+          type: string
+        avatar:
+          type: string
+        goals:
+          type: array
+          items:
+            type: string
+        learningStyle:
+          type: string
+        interests:
+          type: array
+          items:
+            type: string
+        culturalContext:
+          type: array
+          items:
+            type: string
+        homeLanguage:
+          type: string
+        musicPreference:
+          type: string
+
+    IdentityQuestResult:
+      type: object
+      required: [profile, xpAwarded, newBadges]
+      properties:
+        profile:
+          $ref: "#/components/schemas/StudentProfile"
+        xpAwarded:
+          type: integer
+        newBadges:
+          type: array
+          items:
+            type: object
+            required: [code, icon, title, desc, rarity]
+            properties:
+              code:
+                type: string
+              icon:
+                type: string
+              title:
+                type: string
+              desc:
+                type: string
+              rarity:
+                type: string
 
     # ── CAREGIVER ─────────────────────────────────────────────────────────────
     CaregiverProfile:

@@ -13,6 +13,7 @@ export interface BadgeContext {
   currentStreak: number;
   masteredSkillCount: number;
   placementCompleted: boolean;
+  identityQuestCompleted: boolean;
 }
 
 export interface BadgeDef {
@@ -26,6 +27,7 @@ export interface BadgeDef {
 type CheckFn = (ctx: BadgeContext) => boolean;
 
 const BADGE_CHECKS: Array<BadgeDef & { check: CheckFn }> = [
+  { code: "identity_quest",   icon: "🌍", title: "Identity Explorer", desc: "Complete your Identity Quest",           rarity: "common",    check: (c) => c.identityQuestCompleted },
   { code: "first_practice",   icon: "🌟", title: "First Steps",      desc: "Complete your first practice session",   rarity: "common",    check: (c) => c.practiceSessionCount >= 1 },
   { code: "placement_done",   icon: "🎯", title: "Placed!",           desc: "Complete your placement assessment",     rarity: "common",    check: (c) => c.placementCompleted },
   { code: "streak_3",         icon: "🔥", title: "On Fire",           desc: "Reach a 3-day streak",                  rarity: "common",    check: (c) => c.currentStreak >= 3 },
@@ -51,6 +53,7 @@ export async function checkAndAwardBadges(studentId: string): Promise<BadgeDef[]
       totalXp: studentProfilesTable.totalXp,
       currentStreak: studentProfilesTable.currentStreak,
       preAssessmentCompleted: studentProfilesTable.preAssessmentCompleted,
+      identityQuestCompleted: studentProfilesTable.identityQuestCompleted,
     })
     .from(studentProfilesTable)
     .where(eq(studentProfilesTable.id, studentId))
@@ -81,6 +84,7 @@ export async function checkAndAwardBadges(studentId: string): Promise<BadgeDef[]
     currentStreak: student.currentStreak,
     masteredSkillCount: Number(masteredCount),
     placementCompleted: student.preAssessmentCompleted,
+    identityQuestCompleted: (student as any).identityQuestCompleted ?? false,
   };
 
   const newBadgeDefs: BadgeDef[] = [];

@@ -142,6 +142,30 @@ export default function StudentDashboard() {
           ))}
         </div>
 
+        {/* Identity Quest CTA */}
+        {profile && !(profile as any).identityQuestCompleted && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="border-0 shadow-sm bg-gradient-to-r from-violet-600 to-indigo-600 text-white overflow-hidden">
+              <CardContent className="p-6 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="text-4xl">🌍</div>
+                  <div>
+                    <h2 className="text-base font-bold mb-0.5">Start your Identity Quest</h2>
+                    <p className="text-violet-100 text-sm">Personalize your learning in 2 minutes — earn 75 XP + a badge!</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setLocation("/identity-quest")}
+                  className="bg-white text-violet-700 hover:bg-violet-50 font-semibold gap-2 shrink-0"
+                  data-testid="btn-identity-quest"
+                >
+                  Begin <ArrowRight className="w-4 h-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         {/* Start Practice CTA */}
         {!profile?.preAssessmentCompleted ? (
           <Card className="border-0 shadow-sm bg-gradient-to-r from-indigo-600 to-purple-600 text-white">

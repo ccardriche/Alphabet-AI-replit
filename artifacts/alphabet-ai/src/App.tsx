@@ -23,6 +23,7 @@ const ExerciseGenerator = lazy(() => import("@/pages/ExerciseGenerator"));
 const ClassAnalytics = lazy(() => import("@/pages/ClassAnalytics"));
 const CaregiverOnboarding = lazy(() => import("@/pages/CaregiverOnboarding"));
 const CaregiverDashboard = lazy(() => import("@/pages/CaregiverDashboard"));
+const IdentityQuest = lazy(() => import("@/pages/IdentityQuest"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -159,6 +160,13 @@ function Router() {
           <AuthGuard>
             <ErrorBoundary>
               <CaregiverDashboard />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/identity-quest">
+          <AuthGuard>
+            <ErrorBoundary>
+              <IdentityQuest />
             </ErrorBoundary>
           </AuthGuard>
         </Route>

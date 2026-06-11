@@ -8,7 +8,7 @@ import {
   earnedBadgesTable,
 } from "@workspace/db/schema";
 import { eq, and, gte } from "drizzle-orm";
-import { ALL_BADGES } from "../lib/badges";
+import { ALL_BADGES, checkAndAwardBadges } from "../lib/badges";
 import { z } from "zod";
 
 const router = Router();
@@ -102,6 +102,54 @@ router.put("/students/profile", async (req, res) => {
     .where(eq(studentProfilesTable.id, profile.id))
     .returning();
   return res.json(updated);
+});
+
+// PUT /api/students/identity — save Identity Quest answers, award XP + badge
+router.put("/students/identity", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const student = await getStudentByUserId(req.user!.id);
+  if (!student) return res.status(404).json({ error: "Not found" });
+
+  const {
+    pronouns, avatar, goals, learningStyle,
+    interests, culturalContext, homeLanguage, musicPreference,
+  } = req.body as {
+    pronouns?: string; avatar?: string; goals?: string[]; learningStyle?: string;
+    interests?: string[]; culturalContext?: string[]; homeLanguage?: string; musicPreference?: string;
+  };
+
+  const wasCompleted = student.identityQuestCompleted;
+  const XP_REWARD = 75;
+
+  const updates: Record<string, unknown> = {
+    identityQuestCompleted: true,
+    ...(pronouns !== undefined && { pronouns }),
+    ...(avatar !== undefined && { avatar }),
+    ...(goals !== undefined && { goals }),
+    ...(learningStyle !== undefined && { learningStyle }),
+    ...(interests !== undefined && { interests }),
+    ...(culturalContext !== undefined && { culturalContext }),
+    ...(homeLanguage !== undefined && { homeLanguage }),
+    ...(musicPreference !== undefined && { musicPreference }),
+  };
+
+  if (!wasCompleted) {
+    updates.totalXp = (student.totalXp ?? 0) + XP_REWARD;
+  }
+
+  const [updated] = await db
+    .update(studentProfilesTable)
+    .set(updates as any)
+    .where(eq(studentProfilesTable.id, student.id))
+    .returning();
+
+  const newBadges = await checkAndAwardBadges(student.id);
+
+  return res.json({
+    profile: updated,
+    xpAwarded: wasCompleted ? 0 : XP_REWARD,
+    newBadges,
+  });
 });
 
 // GET /api/students/dashboard
