@@ -7,6 +7,5 @@
  */
 
 export interface PlacementStartInput {
-  studentId: string;
   startTheta?: number;
 }

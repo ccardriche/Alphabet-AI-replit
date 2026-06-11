@@ -53,6 +53,8 @@ router.get("/practice/:sessionId/next", async (req, res) => {
   const { sessionId } = req.params;
   const [session] = await db.select().from(practiceSessionsTable).where(eq(practiceSessionsTable.id, sessionId)).limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
+  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user.id)).limit(1))[0];
+  if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
   const student = await getStudentByUserId(req.user!.id);
 
@@ -121,6 +123,8 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
 
   const [session] = await db.select().from(practiceSessionsTable).where(eq(practiceSessionsTable.id, sessionId)).limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
+  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user.id)).limit(1))[0];
+  if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
   const existingMastery = (await db.select().from(skillMasteryTable).where(
     and(eq(skillMasteryTable.studentId, session.studentId), eq(skillMasteryTable.skillCode, skillCode))
@@ -164,7 +168,6 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
     });
   }
 
-  // Update session
   const [updated] = await db.update(practiceSessionsTable).set({
     activitiesCompleted: session.activitiesCompleted + 1,
     totalQuestions: session.totalQuestions + 1,
@@ -185,6 +188,11 @@ router.post("/practice/:sessionId/complete", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
   const { totalQuestions, correctAnswers, durationMin } = req.body;
+
+  const [session] = await db.select().from(practiceSessionsTable).where(eq(practiceSessionsTable.id, sessionId)).limit(1);
+  if (!session) return res.status(404).json({ error: "Session not found" });
+  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user.id)).limit(1))[0];
+  if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
   const [updated] = await db.update(practiceSessionsTable).set({
     status: "completed",

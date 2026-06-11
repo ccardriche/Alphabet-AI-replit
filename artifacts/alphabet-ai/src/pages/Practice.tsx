@@ -16,7 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Zap, CheckCircle, XCircle, Trophy, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { STUDENT_ID_KEY, DOMAIN_COLORS } from "@/lib/constants";
+import { DOMAIN_COLORS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
 
@@ -53,12 +53,11 @@ export default function Practice() {
   const submitAnswer = useSubmitActivityAnswer();
   const completeSession = useCompletePracticeSession();
 
-  const studentId = profile?.id ?? localStorage.getItem(STUDENT_ID_KEY) ?? "00000000-0000-0000-0000-000000000001";
   const domainColor = activity ? (DOMAIN_COLORS[(activity as any).domainCode ?? (activity as any).domain] ?? "#6366f1") : "#6366f1";
 
   async function handleStart() {
     try {
-      const session = await startSession.mutateAsync({ data: { studentId } });
+      const session = await startSession.mutateAsync({ data: {} });
       setSessionId(session.id);
       setActivityNum(0);
       setScore({ correct: 0, total: 0, xp: 0 });

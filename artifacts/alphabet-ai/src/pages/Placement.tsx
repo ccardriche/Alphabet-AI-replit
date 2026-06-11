@@ -49,7 +49,7 @@ export default function Placement() {
 
   async function handleStart() {
     try {
-      const session = await startPlacement.mutateAsync({ data: { studentId: studentProfile?.id ?? "" } });
+      const session = await startPlacement.mutateAsync({ data: {} });
       setSessionId(session.id);
       setPhase("question");
       setTimeout(() => refetchQuestion(), 100);

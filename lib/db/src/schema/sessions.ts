@@ -1,4 +1,4 @@
-import { pgTable, text, real, integer, boolean, timestamp, uuid, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, real, integer, boolean, timestamp, uuid, jsonb, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -36,7 +36,7 @@ export const practiceSessionsTable = pgTable("practice_sessions", {
 
 export const lessonSessionsTable = pgTable("lesson_sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
-  teacherId: uuid("teacher_id").notNull(),
+  teacherId: varchar("teacher_id").notNull(),
   title: text("title").notNull(),
   gradeLevel: text("grade_level").notNull(),
   domain: text("domain").notNull(),

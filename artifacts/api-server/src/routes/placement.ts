@@ -56,6 +56,8 @@ router.get("/placement/:sessionId/next", async (req, res) => {
   const { sessionId } = req.params;
   const [session] = await db.select().from(placementSessionsTable).where(eq(placementSessionsTable.id, sessionId)).limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
+  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user.id)).limit(1))[0];
+  if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
   if (session.status === "completed") {
     return res.status(400).json({ error: "Session already completed" });
@@ -88,7 +90,7 @@ router.get("/placement/:sessionId/next", async (req, res) => {
       culturalContext: student?.culturalContext ?? [],
       activityType: "multiple_choice",
     });
-  } catch {
+  } catch (e) {
     question = makeMockQuestion(targetSkill);
   }
 
@@ -103,6 +105,8 @@ router.post("/placement/:sessionId/answer", async (req, res) => {
 
   const [session] = await db.select().from(placementSessionsTable).where(eq(placementSessionsTable.id, sessionId)).limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
+  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user.id)).limit(1))[0];
+  if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
   const skill = (await db.select().from(elaSkillsTable).where(eq(elaSkillsTable.skillCode, skillCode)).limit(1))[0];
   const b = skill?.difficulty ?? 0;
@@ -155,6 +159,8 @@ router.get("/placement/:sessionId/result", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const [session] = await db.select().from(placementSessionsTable).where(eq(placementSessionsTable.id, req.params.sessionId)).limit(1);
   if (!session) return res.status(404).json({ error: "Session not found" });
+  const owner = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user.id)).limit(1))[0];
+  if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
   return res.json(session);
 });
 

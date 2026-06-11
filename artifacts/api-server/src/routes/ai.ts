@@ -3,6 +3,8 @@ import { db } from "@workspace/db";
 import { lessonSessionsTable, elaSkillsTable, usersTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import OpenAI from "openai";
+import { requireTeacher } from "../middlewares/requireTeacher";
+import { getSession, getSessionId, updateSession } from "../lib/auth";
 
 const router = Router();
 
@@ -11,17 +13,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY ?? "sk-placeholder",
 });
 
-function requireAuth(req: any, res: any): boolean {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "Unauthorized" });
-    return false;
-  }
-  return true;
-}
-
 // POST /api/llm/lesson
-router.post("/llm/lesson", async (req, res) => {
-  if (!requireAuth(req, res)) return;
+router.post("/llm/lesson", requireTeacher, async (req, res) => {
+  const teacherId = req.user!.id;
+
   const { text, title, gradeLevel, domain, standardCode } = req.body;
   if (!text || !gradeLevel || !domain) {
     return res.status(400).json({ error: "text, gradeLevel, and domain are required" });
@@ -82,7 +77,7 @@ Return JSON:
   }
 
   const [session] = await db.insert(lessonSessionsTable).values({
-    teacherId: req.user!.id,
+    teacherId,
     title: title ?? "Untitled Lesson",
     gradeLevel,
     domain,
@@ -99,15 +94,17 @@ Return JSON:
 });
 
 // GET /api/lessons
-router.get("/lessons", async (req, res) => {
-  if (!requireAuth(req, res)) return;
-  const lessons = await db.select().from(lessonSessionsTable).limit(20);
+router.get("/lessons", requireTeacher, async (req, res) => {
+  const teacherId = req.user!.id;
+  const lessons = await db.select().from(lessonSessionsTable)
+    .where(eq(lessonSessionsTable.teacherId, teacherId))
+    .limit(20);
   return res.json(lessons);
 });
 
 // POST /api/llm/question
 router.post("/llm/question", async (req, res) => {
-  if (!requireAuth(req, res)) return;
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
   const { skillCode, gradeLevel, activityType, interests, culturalContext, homeLanguage, theta } = req.body;
   if (!skillCode || !gradeLevel || !activityType) {
     return res.status(400).json({ error: "skillCode, gradeLevel, and activityType are required" });
@@ -169,7 +166,7 @@ router.post("/llm/question", async (req, res) => {
 
 // POST /api/llm/exercise
 router.post("/llm/exercise", async (req, res) => {
-  if (!requireAuth(req, res)) return;
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
   const { skillCode, gradeLevel, count = 5, interests } = req.body;
   if (!skillCode || !gradeLevel) return res.status(400).json({ error: "skillCode and gradeLevel required" });
 
@@ -272,21 +269,56 @@ router.get("/me", async (req, res) => {
     .where(eq(usersTable.id, req.user!.id))
     .limit(1);
   if (!user) return res.status(404).json({ error: "User not found" });
-  return res.json(user);
+  return res.json({
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    profileImageUrl: user.profileImageUrl,
+    role: user.role,
+    createdAt: user.createdAt,
+  });
 });
 
-// PUT /api/me — update display name / role
+// PUT /api/me — update role (persists to DB and refreshes session immediately)
 router.put("/me", async (req, res) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  const { displayName, role } = req.body;
+  const { role } = req.body;
+  if (!role || (role !== "student" && role !== "teacher")) {
+    return res.status(400).json({ error: "role must be 'student' or 'teacher'" });
+  }
+
   const [updated] = await db
     .update(usersTable)
-    .set({ displayName, role, updatedAt: new Date() })
+    .set({ role, updatedAt: new Date() })
     .where(eq(usersTable.id, req.user!.id))
     .returning();
-  return res.json(updated);
+  if (!updated) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const sid = getSessionId(req);
+  if (sid) {
+    const session = await getSession(sid);
+    if (session) {
+      await updateSession(sid, {
+        ...session,
+        user: { ...session.user, role: updated.role },
+      });
+    }
+  }
+
+  return res.json({
+    id: updated.id,
+    email: updated.email,
+    firstName: updated.firstName,
+    lastName: updated.lastName,
+    profileImageUrl: updated.profileImageUrl,
+    role: updated.role,
+    createdAt: updated.createdAt,
+  });
 });
 
 export default router;

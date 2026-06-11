@@ -18,14 +18,15 @@ export function useAuth(): AuthState {
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/api/auth/user", { credentials: "include" })
+    fetch("/api/me", { credentials: "include" })
       .then((res) => {
+        if (res.status === 401) return null;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ user: AuthUser | null }>;
+        return res.json() as Promise<AuthUser | null>;
       })
       .then((data) => {
         if (!cancelled) {
-          setUser(data.user ?? null);
+          setUser(data ?? null);
           setIsLoading(false);
         }
       })
@@ -42,8 +43,8 @@ export function useAuth(): AuthState {
   }, []);
 
   const login = useCallback(() => {
-    const base = (import.meta as any).env?.BASE_URL?.replace(/\/+$/, "") || "/";
-    window.location.href = `/api/login?returnTo=${encodeURIComponent(base)}`;
+    const returnTo = window.location.pathname + window.location.search;
+    window.location.href = `/api/login?returnTo=${encodeURIComponent(returnTo)}`;
   }, []);
 
   const logout = useCallback(() => {

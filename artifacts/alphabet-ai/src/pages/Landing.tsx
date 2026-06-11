@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { GraduationCap, BookOpen, Users, ArrowRight, Star, TrendingUp, Brain } from "lucide-react";
+import { GraduationCap, BookOpen, Users, ArrowRight, Star, TrendingUp, Brain, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useGetStudentProfile, getGetStudentProfileQueryKey } from "@workspace/api-client-react";
@@ -43,6 +43,20 @@ export default function Landing() {
       }
     }
   }, [authLoading, isAuthenticated, profileLoading, profile, profileError, setLocation]);
+
+  async function handleRole(role: "student" | "teacher") {
+    sessionStorage.setItem(ROLE_KEY, role);
+    try {
+      await fetch("/api/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      setLocation(role === "student" ? "/dashboard" : "/teacher");
+    } catch (error) {
+      console.error("Failed to set role:", error);
+    }
+  }
 
   if (isAuthenticated && (profileLoading || !profileError)) {
     return (
@@ -100,28 +114,46 @@ export default function Landing() {
               Alphabet AI delivers personalized, culturally-responsive ELA practice grounded in the Science of Reading — adapting to each student in real time.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            {authLoading ? (
+              <div className="flex items-center gap-2 text-slate-400 h-12">
+                <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Loading…</span>
+              </div>
+            ) : !isAuthenticated ? (
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold px-8 gap-2"
-                onClick={() => { sessionStorage.setItem(ROLE_KEY, "student"); login(); }}
-                data-testid="btn-student-login"
+                onClick={() => login()}
+                data-testid="btn-login"
               >
-                <BookOpen className="w-4 h-4" />
-                I am a Student
+                <LogIn className="w-4 h-4" />
+                Sign in to get started
                 <ArrowRight className="w-4 h-4" />
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white font-semibold px-8 gap-2"
-                onClick={() => { sessionStorage.setItem(ROLE_KEY, "teacher"); login(); }}
-                data-testid="btn-teacher-login"
-              >
-                <Users className="w-4 h-4" />
-                I am a Teacher
-              </Button>
-            </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button
+                  size="lg"
+                  className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold px-8 gap-2"
+                  onClick={() => handleRole("student")}
+                  data-testid="btn-student-login"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  I am a Student
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white font-semibold px-8 gap-2"
+                  onClick={() => handleRole("teacher")}
+                  data-testid="btn-teacher-login"
+                >
+                  <Users className="w-4 h-4" />
+                  I am a Teacher
+                </Button>
+              </div>
+            )}
           </motion.div>
 
           <motion.div

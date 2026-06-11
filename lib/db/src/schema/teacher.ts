@@ -1,10 +1,10 @@
-import { pgTable, text, integer, boolean, timestamp, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const teacherClassesTable = pgTable("teacher_classes", {
   id: uuid("id").primaryKey().defaultRandom(),
-  teacherId: uuid("teacher_id").notNull(),
+  teacherId: varchar("teacher_id").notNull(),
   className: text("class_name").notNull(),
   gradeLevel: text("grade_level").notNull(),
   classCode: text("class_code").notNull().unique(),
@@ -25,7 +25,7 @@ export const classEnrollmentsTable = pgTable("class_enrollments", {
 
 export const teacherAlertsTable = pgTable("teacher_alerts", {
   id: uuid("id").primaryKey().defaultRandom(),
-  teacherId: uuid("teacher_id").notNull(),
+  teacherId: varchar("teacher_id").notNull(),
   studentId: uuid("student_id").notNull(),
   studentName: text("student_name").notNull(),
   alertType: text("alert_type").notNull(),

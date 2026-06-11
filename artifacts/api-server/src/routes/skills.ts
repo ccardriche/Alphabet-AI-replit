@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { elaSkillsTable, skillMasteryTable } from "@workspace/db/schema";
-import { eq, and, ilike, sql } from "drizzle-orm";
+import { eq, and, ilike } from "drizzle-orm";
 
 const router = Router();
 
@@ -57,8 +57,11 @@ router.get("/skills/:skillCode", async (req, res) => {
 
 // GET /api/mastery
 router.get("/mastery", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   const { studentProfilesTable } = await import("@workspace/db/schema");
-  const student = (await db.select().from(studentProfilesTable).limit(1))[0];
+  const student = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user.id)).limit(1))[0];
   if (!student) return res.json([]);
 
   const { domain, masteryLevel } = req.query as Record<string, string>;
@@ -72,8 +75,11 @@ router.get("/mastery", async (req, res) => {
 
 // GET /api/mastery/summary
 router.get("/mastery/summary", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   const { studentProfilesTable } = await import("@workspace/db/schema");
-  const student = (await db.select().from(studentProfilesTable).limit(1))[0];
+  const student = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user.id)).limit(1))[0];
   if (!student) {
     return res.json({ masteredSkills: 0, totalSkills: 0, overallSmartScore: 0, domains: [] });
   }
@@ -109,8 +115,11 @@ router.get("/mastery/summary", async (req, res) => {
 
 // GET /api/mastery/:skillCode
 router.get("/mastery/:skillCode", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   const { studentProfilesTable } = await import("@workspace/db/schema");
-  const student = (await db.select().from(studentProfilesTable).limit(1))[0];
+  const student = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user.id)).limit(1))[0];
   if (!student) return res.status(404).json({ error: "No student" });
 
   const [mastery] = await db
@@ -125,8 +134,11 @@ router.get("/mastery/:skillCode", async (req, res) => {
 
 // POST /api/mastery/:skillCode/record
 router.post("/mastery/:skillCode/record", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   const { studentProfilesTable } = await import("@workspace/db/schema");
-  const student = (await db.select().from(studentProfilesTable).limit(1))[0];
+  const student = (await db.select().from(studentProfilesTable).where(eq(studentProfilesTable.userId, req.user.id)).limit(1))[0];
   if (!student) return res.status(404).json({ error: "No student" });
 
   const { correct, questionDifficulty = 0 } = req.body as { correct: boolean; questionDifficulty?: number };

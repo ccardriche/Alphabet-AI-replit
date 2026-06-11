@@ -7,6 +7,5 @@
  */
 
 export interface PracticeSessionInput {
-  studentId: string;
   focusDomain?: string;
 }

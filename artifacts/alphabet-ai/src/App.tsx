@@ -23,9 +23,9 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const { isAuthenticated, isLoading, login } = useAuth();
-  const [location] = useLocation();
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { isLoading, isAuthenticated } = useAuth();
+  const [location, setLocation] = useLocation();
 
   if (isLoading) {
     return (
@@ -36,28 +36,51 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   }
 
   if (!isAuthenticated) {
-    login();
+    const returnTo = encodeURIComponent(location);
+    setLocation(`/?returnTo=${returnTo}`);
     return null;
   }
 
-  return <Component />;
+  return <>{children}</>;
 }
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
-      <Route path="/onboarding">{() => <ProtectedRoute component={Onboarding} />}</Route>
-      <Route path="/placement">{() => <ProtectedRoute component={Placement} />}</Route>
-      <Route path="/dashboard">{() => <ProtectedRoute component={StudentDashboard} />}</Route>
-      <Route path="/practice">{() => <ProtectedRoute component={Practice} />}</Route>
-      <Route path="/skill-tree">{() => <ProtectedRoute component={SkillTree} />}</Route>
-      <Route path="/intervention">{() => <ProtectedRoute component={Intervention} />}</Route>
-      <Route path="/progress">{() => <ProtectedRoute component={Progress} />}</Route>
-      <Route path="/teacher">{() => <ProtectedRoute component={TeacherDashboard} />}</Route>
-      <Route path="/teacher/roster">{() => <ProtectedRoute component={TeacherRoster} />}</Route>
-      <Route path="/teacher/book-upload">{() => <ProtectedRoute component={BookUpload} />}</Route>
-      <Route path="/teacher/exercises">{() => <ProtectedRoute component={ExerciseGenerator} />}</Route>
+      <Route path="/onboarding">
+        <AuthGuard><Onboarding /></AuthGuard>
+      </Route>
+      <Route path="/placement">
+        <AuthGuard><Placement /></AuthGuard>
+      </Route>
+      <Route path="/dashboard">
+        <AuthGuard><StudentDashboard /></AuthGuard>
+      </Route>
+      <Route path="/practice">
+        <AuthGuard><Practice /></AuthGuard>
+      </Route>
+      <Route path="/skill-tree">
+        <AuthGuard><SkillTree /></AuthGuard>
+      </Route>
+      <Route path="/intervention">
+        <AuthGuard><Intervention /></AuthGuard>
+      </Route>
+      <Route path="/progress">
+        <AuthGuard><Progress /></AuthGuard>
+      </Route>
+      <Route path="/teacher">
+        <AuthGuard><TeacherDashboard /></AuthGuard>
+      </Route>
+      <Route path="/teacher/roster">
+        <AuthGuard><TeacherRoster /></AuthGuard>
+      </Route>
+      <Route path="/teacher/book-upload">
+        <AuthGuard><BookUpload /></AuthGuard>
+      </Route>
+      <Route path="/teacher/exercises">
+        <AuthGuard><ExerciseGenerator /></AuthGuard>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

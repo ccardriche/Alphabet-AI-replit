@@ -1,10 +1,10 @@
-import { pgTable, text, integer, boolean, jsonb, timestamp, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, jsonb, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const studentProfilesTable = pgTable("student_profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().unique(),
+  userId: varchar("user_id").notNull().unique(),
   displayName: text("display_name").notNull(),
   grade: text("grade").notNull(),
   age: integer("age"),

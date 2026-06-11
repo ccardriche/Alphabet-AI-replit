@@ -4,13 +4,14 @@
     "composite": true,
     "declarationMap": true,
     "emitDeclarationOnly": true,
-    "outDir": "./dist",
-    "jsx": "preserve",
-    "lib": ["esnext", "dom"],
+    "outDir": "dist",
+    "rootDir": "src",
+    "jsx": "react-jsx",
+    "lib": ["esnext", "dom", "dom.iterable"],
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true
   },
-  "include": ["src/**/*"],
+  "include": ["src"],
   "references": [
     { "path": "../../lib/api-client-react" }
   ]
