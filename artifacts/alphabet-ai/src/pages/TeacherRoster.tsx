@@ -205,14 +205,14 @@ export default function TeacherRoster() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: i * 0.03 }}
-                      className="hover:bg-indigo-50/40 transition-colors cursor-pointer"
+                      className="hover:bg-indigo-50/40 transition-colors cursor-pointer group"
                       data-testid={`student-row-${s.studentId}`}
                       onClick={() => s.studentId && setLocation(`/teacher/students/${s.studentId}`)}
                     >
-                      <td className="px-4 py-3 sticky left-0 bg-white group-hover:bg-indigo-50/40">
+                      <td className="px-4 py-3 sticky left-0 bg-white group-hover:bg-indigo-50/40 transition-colors">
                         <div className="flex items-center gap-1">
                           <p className="font-medium truncate">{s.displayName}</p>
-                          <ChevronRight className="w-3 h-3 text-indigo-400 opacity-0 group-hover:opacity-100 shrink-0 ml-auto" />
+                          <ChevronRight className="w-3 h-3 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-auto" />
                         </div>
                         {s.gradeGap != null && s.gradeGap > 0 && (
                           <p className="text-xs text-red-500">-{s.gradeGap} grade gap</p>

@@ -27,18 +27,18 @@ import { DOMAIN_COLORS } from "@/lib/constants";
 import Layout from "@/components/Layout";
 
 const MASTERY_COLORS: Record<string, string> = {
-  mastered: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  proficient: "bg-green-100 text-green-700 border-green-200",
-  developing: "bg-amber-100 text-amber-700 border-amber-200",
-  beginning: "bg-orange-100 text-orange-700 border-orange-200",
+  mastered:    "bg-emerald-100 text-emerald-700 border-emerald-200",
+  approaching: "bg-green-100 text-green-700 border-green-200",
+  practicing:  "bg-amber-100 text-amber-700 border-amber-200",
+  introduced:  "bg-blue-100 text-blue-700 border-blue-200",
   not_started: "bg-gray-100 text-gray-500 border-gray-200",
 };
 
 const MASTERY_LABEL: Record<string, string> = {
-  mastered: "Mastered",
-  proficient: "Proficient",
-  developing: "Developing",
-  beginning: "Beginning",
+  mastered:    "Mastered",
+  approaching: "Approaching",
+  practicing:  "Practicing",
+  introduced:  "Introduced",
   not_started: "Not Started",
 };
 
