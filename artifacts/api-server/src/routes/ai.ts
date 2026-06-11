@@ -1,11 +1,14 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import { db } from "@workspace/db";
 import { lessonSessionsTable, elaSkillsTable, usersTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import OpenAI from "openai";
+import multer from "multer";
 import { requireTeacher } from "../middlewares/requireTeacher";
 import { getSession, getSessionId, updateSession } from "../lib/auth";
 import { generateQuestion, generateExerciseWorksheet } from "../services/questionGenerator";
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -14,19 +17,57 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY ?? "sk-placeholder",
 });
 
-// POST /api/llm/lesson
-router.post("/llm/lesson", requireTeacher, async (req, res) => {
+// POST /api/llm/parse-pdf — extract plain text from an uploaded PDF (or .txt)
+router.post("/llm/parse-pdf", requireTeacher, upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+  const mimetype = req.file.mimetype;
+  const originalname = req.file.originalname ?? "";
+
+  if (mimetype === "text/plain" || originalname.endsWith(".txt")) {
+    return res.json({ text: req.file.buffer.toString("utf8") });
+  }
+
+  if (mimetype === "application/pdf" || originalname.endsWith(".pdf")) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pdfParse = require("pdf-parse");
+      const data = await pdfParse(req.file.buffer);
+      return res.json({ text: data.text as string });
+    } catch (err) {
+      req.log.error({ err }, "pdf-parse failed");
+      return res.status(422).json({ error: "Could not extract text from PDF. Try pasting the text directly." });
+    }
+  }
+
+  return res.status(400).json({ error: "Unsupported file type. Upload a PDF or .txt file." });
+});
+
+// POST /api/lessons/generate (matches OpenAPI spec + generated client)
+// POST /api/llm/lesson kept as backward-compat alias
+const lessonGenerateHandler: RequestHandler = async (req, res) => {
   const teacherId = req.user!.id;
 
-  const { text, title, gradeLevel, domain, standardCode } = req.body;
+  const { text, title, gradeLevel, domain, standardCode } = req.body as {
+    text: string; title?: string; gradeLevel: string; domain: string; standardCode?: string;
+  };
   if (!text || !gradeLevel || !domain) {
-    return res.status(400).json({ error: "text, gradeLevel, and domain are required" });
+    res.status(400).json({ error: "text, gradeLevel, and domain are required" });
+    return;
+  }
+
+  interface PracticeQuestion {
+    questionText: string;
+    options: { id: string; text: string }[];
+    correctOptionId: string;
+    explanation: string;
   }
 
   let framingLesson = "";
   let discussionQuestions: string[] = [];
   let writingPrompts: string[] = [];
   let vocabularyList: string[] = [];
+  let practiceQuestions: PracticeQuestion[] = [];
 
   try {
     const completion = await openai.chat.completions.create({
@@ -38,28 +79,34 @@ router.post("/llm/lesson", requireTeacher, async (req, res) => {
         },
         {
           role: "user",
-          content: `Based on this text, generate: a framing lesson (2-3 sentences to introduce it), 5 discussion questions, 3 writing prompts, and 10 vocabulary words.
-
-TEXT: ${text.slice(0, 2000)}
-
-Return JSON:
+          content: `Based on this text, generate a complete lesson package. Return ONLY valid JSON with this exact structure:
 {
-  "framingLesson": "...",
-  "discussionQuestions": ["...", "...", "...", "...", "..."],
-  "writingPrompts": ["...", "...", "..."],
-  "vocabularyList": ["word1", "word2", ...]
-}`,
+  "framingLesson": "2-3 sentence introduction for teachers",
+  "discussionQuestions": ["q1","q2","q3","q4","q5"],
+  "writingPrompts": ["p1","p2","p3"],
+  "vocabularyList": ["word1","word2","word3","word4","word5","word6","word7","word8","word9","word10"],
+  "practiceQuestions": [
+    {"questionText":"...","options":[{"id":"a","text":"..."},{"id":"b","text":"..."},{"id":"c","text":"..."},{"id":"d","text":"..."}],"correctOptionId":"a","explanation":"..."},
+    {"questionText":"...","options":[{"id":"a","text":"..."},{"id":"b","text":"..."},{"id":"c","text":"..."},{"id":"d","text":"..."}],"correctOptionId":"b","explanation":"..."},
+    {"questionText":"...","options":[{"id":"a","text":"..."},{"id":"b","text":"..."},{"id":"c","text":"..."},{"id":"d","text":"..."}],"correctOptionId":"c","explanation":"..."},
+    {"questionText":"...","options":[{"id":"a","text":"..."},{"id":"b","text":"..."},{"id":"c","text":"..."},{"id":"d","text":"..."}],"correctOptionId":"a","explanation":"..."},
+    {"questionText":"...","options":[{"id":"a","text":"..."},{"id":"b","text":"..."},{"id":"c","text":"..."},{"id":"d","text":"..."}],"correctOptionId":"d","explanation":"..."}
+  ]
+}
+
+TEXT: ${text.slice(0, 2000)}`,
         },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1000,
+      max_tokens: 1800,
     });
 
-    const parsed = JSON.parse(completion.choices[0].message.content ?? "{}");
-    framingLesson = parsed.framingLesson ?? "";
-    discussionQuestions = parsed.discussionQuestions ?? [];
-    writingPrompts = parsed.writingPrompts ?? [];
-    vocabularyList = parsed.vocabularyList ?? [];
+    const parsed = JSON.parse(completion.choices[0].message.content ?? "{}") as Record<string, unknown>;
+    framingLesson = (parsed.framingLesson as string) ?? "";
+    discussionQuestions = (parsed.discussionQuestions as string[]) ?? [];
+    writingPrompts = (parsed.writingPrompts as string[]) ?? [];
+    vocabularyList = (parsed.vocabularyList as string[]) ?? [];
+    practiceQuestions = (parsed.practiceQuestions as PracticeQuestion[]) ?? [];
   } catch {
     framingLesson = `This ${gradeLevel} ${domain} lesson explores the provided text through critical reading and analytical writing.`;
     discussionQuestions = [
@@ -75,6 +122,7 @@ Return JSON:
       "Create a sequel or continuation of this text.",
     ];
     vocabularyList = ["analyze", "synthesize", "evidence", "perspective", "argument", "context", "inference", "theme", "structure", "purpose"];
+    practiceQuestions = [];
   }
 
   const [session] = await db.insert(lessonSessionsTable).values({
@@ -91,8 +139,10 @@ Return JSON:
     status: "completed",
   }).returning();
 
-  return res.status(201).json(session);
-});
+  res.status(201).json({ ...session, practiceQuestions });
+};
+
+router.post(["/lessons/generate", "/llm/lesson"], requireTeacher, lessonGenerateHandler);;
 
 // GET /api/lessons
 router.get("/lessons", requireTeacher, async (req, res) => {

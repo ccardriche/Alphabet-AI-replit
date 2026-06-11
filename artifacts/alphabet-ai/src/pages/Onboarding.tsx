@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useCreateStudentProfile } from "@workspace/api-client-react";
-import { GraduationCap, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { GraduationCap, ChevronRight, ChevronLeft, Check, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,10 +23,13 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const STEPS = ["Name & Grade", "Interests", "Language & Culture"];
+const STEPS = ["Name & Grade", "Interests", "Language & Culture", "Join a Class"];
 
 export default function Onboarding() {
   const [step, setStep] = useState(0);
+  const [classCode, setClassCode] = useState("");
+  const [classJoinStatus, setClassJoinStatus] = useState<"idle" | "joining" | "joined" | "error">("idle");
+  const [classJoinError, setClassJoinError] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const createProfile = useCreateStudentProfile();
@@ -51,10 +54,34 @@ export default function Onboarding() {
     setValue("culturalContext", current.includes(ctx) ? current.filter((c) => c !== ctx) : [...current, ctx]);
   }
 
+  async function attemptJoinClass() {
+    if (!classCode.trim()) return; // skipped
+    setClassJoinStatus("joining");
+    setClassJoinError("");
+    try {
+      const res = await fetch("/api/teacher/classes/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classCode: classCode.trim() }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        setClassJoinStatus("joined");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setClassJoinStatus("error");
+        setClassJoinError((err as any).error ?? "Invalid join code. Please check with your teacher.");
+      }
+    } catch {
+      setClassJoinStatus("error");
+      setClassJoinError("Could not connect. Please try again.");
+    }
+  }
+
   async function handleFinish() {
     const data = getValues();
     try {
-      const profile = await createProfile.mutateAsync({
+      await createProfile.mutateAsync({
         data: {
           displayName: data.displayName,
           grade: data.grade,
@@ -63,6 +90,12 @@ export default function Onboarding() {
           culturalContext: data.culturalContext ?? [],
         },
       });
+
+      // Attempt class join after profile creation (best effort)
+      if (classCode.trim() && classJoinStatus !== "joined") {
+        await attemptJoinClass();
+      }
+
       setLocation("/placement");
     } catch {
       toast({ title: "Something went wrong", description: "Please try again.", variant: "destructive" });
@@ -77,6 +110,8 @@ export default function Onboarding() {
   function prevStep() {
     if (step > 0) setStep(step - 1);
   }
+
+  const isLastStep = step === STEPS.length - 1;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-white flex items-center justify-center p-6">
@@ -210,6 +245,85 @@ export default function Onboarding() {
                   </div>
                 </div>
               )}
+
+              {step === 3 && (
+                <div className="space-y-5">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-semibold">Join your class</h2>
+                      <p className="text-xs text-muted-foreground">Optional — you can skip this and join later</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="classCode">Class Join Code</Label>
+                    <Input
+                      id="classCode"
+                      placeholder="e.g. A3F9B2"
+                      value={classCode}
+                      onChange={(e) => {
+                        setClassCode(e.target.value.toUpperCase());
+                        setClassJoinStatus("idle");
+                        setClassJoinError("");
+                      }}
+                      className="mt-1.5 font-mono tracking-widest text-center text-lg uppercase"
+                      maxLength={8}
+                      data-testid="input-class-code"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">Ask your teacher for the 6-letter class code.</p>
+                  </div>
+
+                  {classJoinStatus === "joined" && (
+                    <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5 text-sm">
+                      <Check className="w-4 h-4 shrink-0" />
+                      Successfully joined! Your teacher can now see your progress.
+                    </div>
+                  )}
+
+                  {classJoinStatus === "error" && (
+                    <div className="text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-sm">
+                      {classJoinError}
+                    </div>
+                  )}
+
+                  {classCode.trim() && (classJoinStatus === "idle" || classJoinStatus === "joining") && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={classJoinStatus === "joining"}
+                      className="w-full gap-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+                      onClick={async () => {
+                        setClassJoinStatus("joining");
+                        try {
+                          const res = await fetch("/api/teacher/classes/join", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ classCode: classCode.trim() }),
+                            credentials: "include",
+                          });
+                          if (res.ok) {
+                            setClassJoinStatus("joined");
+                          } else {
+                            const err = await res.json().catch(() => ({}));
+                            setClassJoinStatus("error");
+                            setClassJoinError((err as any).error ?? "Invalid join code.");
+                          }
+                        } catch {
+                          setClassJoinStatus("error");
+                          setClassJoinError("Could not connect. Please try again.");
+                        }
+                      }}
+                      data-testid="btn-verify-code"
+                    >
+                      <Users className="w-4 h-4" />
+                      {classJoinStatus === "joining" ? "Joining..." : "Verify & Join Class"}
+                    </Button>
+                  )}
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
 
@@ -217,15 +331,28 @@ export default function Onboarding() {
             <Button variant="outline" onClick={prevStep} disabled={step === 0} className="gap-2">
               <ChevronLeft className="w-4 h-4" /> Back
             </Button>
-            <Button
-              onClick={nextStep}
-              disabled={createProfile.isPending}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white gap-2"
-              data-testid="btn-next-step"
-            >
-              {step === STEPS.length - 1 ? (createProfile.isPending ? "Setting up..." : "Start Learning") : "Continue"}
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {isLastStep && (
+                <Button
+                  variant="ghost"
+                  onClick={handleFinish}
+                  disabled={createProfile.isPending}
+                  className="text-muted-foreground text-sm"
+                  data-testid="btn-skip-class"
+                >
+                  Skip
+                </Button>
+              )}
+              <Button
+                onClick={nextStep}
+                disabled={createProfile.isPending}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white gap-2"
+                data-testid="btn-next-step"
+              >
+                {isLastStep ? (createProfile.isPending ? "Setting up..." : "Start Learning") : "Continue"}
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -604,6 +604,14 @@ export interface TeacherClassInput {
   schoolName?: string;
 }
 
+export interface JoinClassInput {
+  classCode: string;
+}
+
+export interface ResolveAlertResult {
+  ok?: boolean;
+}
+
 export type StudentRosterEntryStatus = typeof StudentRosterEntryStatus[keyof typeof StudentRosterEntryStatus];
 
 
@@ -678,12 +686,25 @@ export interface TeacherDashboard {
   recentAlerts: TeacherAlert[];
 }
 
+export type PracticeQuestionOptionsItem = {
+  id: string;
+  text: string;
+};
+
+export interface PracticeQuestion {
+  questionText: string;
+  options: PracticeQuestionOptionsItem[];
+  correctOptionId: string;
+  explanation: string;
+}
+
 export type LessonSessionStatus = typeof LessonSessionStatus[keyof typeof LessonSessionStatus];
 
 
 export const LessonSessionStatus = {
   draft: 'draft',
   published: 'published',
+  completed: 'completed',
 } as const;
 
 export interface LessonSession {
@@ -698,6 +719,7 @@ export interface LessonSession {
   discussionQuestions?: string[];
   writingPrompts?: string[];
   vocabularyList?: string[];
+  practiceQuestions?: PracticeQuestion[];
   status: LessonSessionStatus;
   createdAt?: string;
 }

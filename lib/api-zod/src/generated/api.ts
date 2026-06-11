@@ -972,7 +972,7 @@ export const GetTeacherDashboardResponse = zod.object({
 
 
 /**
- * @summary List intervention alerts for teacher
+ * @summary List intervention alerts for teacher (computed from live skill_mastery data)
  */
 export const ListTeacherAlertsResponseItem = zod.object({
   "id": zod.string(),
@@ -984,6 +984,38 @@ export const ListTeacherAlertsResponseItem = zod.object({
   "resolved": zod.boolean().optional()
 })
 export const ListTeacherAlertsResponse = zod.array(ListTeacherAlertsResponseItem)
+
+
+/**
+ * @summary Dismiss/resolve a teacher alert
+ */
+export const ResolveTeacherAlertParams = zod.object({
+  "alertId": zod.coerce.string()
+})
+
+export const ResolveTeacherAlertResponse = zod.object({
+  "ok": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Student joins a class using a class join code
+ */
+export const JoinClassByCodeBody = zod.object({
+  "classCode": zod.string()
+})
+
+export const JoinClassByCodeResponse = zod.object({
+  "id": zod.string(),
+  "teacherId": zod.string(),
+  "className": zod.string(),
+  "gradeLevel": zod.string(),
+  "classCode": zod.string(),
+  "schoolName": zod.string().nullish(),
+  "studentCount": zod.number().optional(),
+  "active": zod.boolean().optional(),
+  "createdAt": zod.string().optional()
+})
 
 
 /**
@@ -999,7 +1031,16 @@ export const ListLessonsResponseItem = zod.object({
   "discussionQuestions": zod.array(zod.string()).optional(),
   "writingPrompts": zod.array(zod.string()).optional(),
   "vocabularyList": zod.array(zod.string()).optional(),
-  "status": zod.enum(['draft', 'published']),
+  "practiceQuestions": zod.array(zod.object({
+  "questionText": zod.string(),
+  "options": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string()
+})),
+  "correctOptionId": zod.string(),
+  "explanation": zod.string()
+})).optional(),
+  "status": zod.enum(['draft', 'published', 'completed']),
   "createdAt": zod.string().optional()
 })
 export const ListLessonsResponse = zod.array(ListLessonsResponseItem)

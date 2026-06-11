@@ -12,4 +12,5 @@ export type LessonSessionStatus = typeof LessonSessionStatus[keyof typeof Lesson
 export const LessonSessionStatus = {
   draft: 'draft',
   published: 'published',
+  completed: 'completed',
 } as const;

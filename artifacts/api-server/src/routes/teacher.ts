@@ -7,7 +7,7 @@ import {
   studentProfilesTable,
   skillMasteryTable,
 } from "@workspace/db/schema";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql, gte, or, lt, isNotNull } from "drizzle-orm";
 import crypto from "crypto";
 import { requireTeacher } from "../middlewares/requireTeacher";
 
@@ -55,6 +55,39 @@ router.post("/teacher/classes", requireTeacher, async (req, res) => {
   return res.status(201).json(cls);
 });
 
+// POST /api/teacher/classes/join  (student joins a class by code)
+router.post("/teacher/classes/join", async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+  const { classCode } = req.body;
+  if (!classCode) return res.status(400).json({ error: "classCode is required" });
+
+  const [cls] = await db.select().from(teacherClassesTable)
+    .where(eq(teacherClassesTable.classCode, (classCode as string).toUpperCase().trim()))
+    .limit(1);
+  if (!cls) return res.status(404).json({ error: "Class not found. Check the join code and try again." });
+
+  // Look up student profile for this user
+  const [student] = await db.select().from(studentProfilesTable)
+    .where(eq(studentProfilesTable.userId, req.user!.id))
+    .limit(1);
+  if (!student) return res.status(404).json({ error: "Student profile not found. Complete onboarding first." });
+
+  // Check if already enrolled
+  const [existing] = await db.select().from(classEnrollmentsTable)
+    .where(and(eq(classEnrollmentsTable.classId, cls.id), eq(classEnrollmentsTable.studentId, student.id)))
+    .limit(1);
+  if (existing) return res.json(cls); // idempotent
+
+  await db.insert(classEnrollmentsTable).values({ classId: cls.id, studentId: student.id });
+
+  // Increment studentCount
+  await db.update(teacherClassesTable)
+    .set({ studentCount: sql`${teacherClassesTable.studentCount} + 1` })
+    .where(eq(teacherClassesTable.id, cls.id));
+
+  return res.json(cls);
+});
+
 // GET /api/teacher/classes/:classId
 router.get("/teacher/classes/:classId", requireTeacher, async (req, res) => {
   const cls = await verifyClassOwnership(req.params.classId as string, req.user!.id);
@@ -87,7 +120,11 @@ router.get("/teacher/classes/:classId/students", requireTeacher, async (req, res
       };
     });
     const avgSmartScore = mastery.length > 0 ? mastery.reduce((sum, m) => sum + m.smartScore, 0) / mastery.length : 0;
-    const status = s.preAssessmentCompleted ? (avgSmartScore >= 70 ? "on_track" : "intervention") : "not_tested";
+    const hasNeedsReteaching = mastery.some((m) => m.needsReteaching);
+    // Spec: On Track = avg >= 70 AND no needsReteaching; Intervention = needsReteaching > 0 OR avg < 70
+    const status = !s.preAssessmentCompleted
+      ? "not_tested"
+      : (hasNeedsReteaching || avgSmartScore < 70 ? "intervention" : "on_track");
     const gradeOrder = ["K","1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th","11th","12th"];
     const gradeGap = Math.max(0, gradeOrder.indexOf(s.grade) - gradeOrder.indexOf(s.diagnosedGradeLevel ?? s.grade));
     return {
@@ -98,6 +135,7 @@ router.get("/teacher/classes/:classId/students", requireTeacher, async (req, res
       gradeGap,
       status,
       domainScores,
+      lastActive: null,
     };
   }));
 
@@ -113,7 +151,7 @@ router.get("/teacher/classes/:classId/heatmap", requireTeacher, async (req, res)
     .from(classEnrollmentsTable)
     .where(eq(classEnrollmentsTable.classId, cls.id));
   const studentIds = enrollments.map((e) => e.studentId);
-  if (studentIds.length === 0) return res.json({ domains: [], students: [] });
+  if (studentIds.length === 0) return res.json({ classId: cls.id, domains: [], students: [] });
 
   const students = await db.select().from(studentProfilesTable)
     .where(inArray(studentProfilesTable.id, studentIds));
@@ -128,7 +166,7 @@ router.get("/teacher/classes/:classId/heatmap", requireTeacher, async (req, res)
     return { studentId: s.id, displayName: s.displayName, domainScores };
   }));
 
-  return res.json({ domains, students: studentData });
+  return res.json({ classId: cls.id, domains, students: studentData });
 });
 
 // GET /api/teacher/dashboard
@@ -153,16 +191,11 @@ router.get("/teacher/dashboard", requireTeacher, async (req, res) => {
     if (avg >= 70) onTrack++; else intervention++;
   }
 
-  const alerts = await db.select().from(teacherAlertsTable).where(
-    and(eq(teacherAlertsTable.teacherId, teacherId), eq(teacherAlertsTable.resolved, false))
-  ).limit(10);
-
   const totalMasteries = allMastery.flat();
   const avgClassScore = totalMasteries.length > 0
     ? totalMasteries.reduce((sum, m) => sum + m.smartScore, 0) / totalMasteries.length
     : 0;
 
-  // Count total needsReteaching=true records across all class students
   const needsReteachingCount = studentIds.length > 0
     ? (await db
         .select({ count: sql<number>`count(*)::int` })
@@ -174,6 +207,9 @@ router.get("/teacher/dashboard", requireTeacher, async (req, res) => {
       )[0]?.count ?? 0
     : 0;
 
+  // Compute live alerts for dashboard preview
+  const recentAlerts = await computeLiveAlerts(teacherId, studentIds, students, 5);
+
   return res.json({
     totalStudents: students.length,
     onTrackCount: onTrack,
@@ -181,17 +217,162 @@ router.get("/teacher/dashboard", requireTeacher, async (req, res) => {
     notTestedCount: notTested,
     needsReteachingCount,
     avgClassScore: Math.round(avgClassScore),
-    recentAlerts: alerts,
+    recentAlerts,
   });
 });
+
+// Helper: compute live alerts from skill_mastery
+async function computeLiveAlerts(
+  teacherId: string,
+  studentIds: string[],
+  students: { id: string; displayName: string }[],
+  limit = 20,
+) {
+  if (studentIds.length === 0) return [];
+
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+
+  // Students with 3+ consecutive errors on any skill
+  const consecutiveErrorRows = await db
+    .select({ studentId: skillMasteryTable.studentId })
+    .from(skillMasteryTable)
+    .where(and(
+      inArray(skillMasteryTable.studentId, studentIds),
+      gte(skillMasteryTable.consecutiveErrors, 3),
+    ));
+
+  // Students whose MOST RECENT practice (max across all skills) is older than 3 days
+  // Group by studentId and compare max(lastPracticed) — avoids false positives from stale skills
+  const inactiveRows = await db
+    .select({
+      studentId: skillMasteryTable.studentId,
+      maxLastPracticed: sql<Date | null>`max(${skillMasteryTable.lastPracticed})`,
+    })
+    .from(skillMasteryTable)
+    .where(inArray(skillMasteryTable.studentId, studentIds))
+    .groupBy(skillMasteryTable.studentId)
+    .having(sql`max(${skillMasteryTable.lastPracticed}) < ${threeDaysAgo} OR max(${skillMasteryTable.lastPracticed}) IS NULL`);
+
+  // Students with zero mastery rows (enrolled but have never practiced any skill)
+  const masteryStudentIds = new Set(inactiveRows.map((r) => r.studentId));
+  const allMasteryStudentRows = await db
+    .select({ studentId: skillMasteryTable.studentId })
+    .from(skillMasteryTable)
+    .where(inArray(skillMasteryTable.studentId, studentIds))
+    .groupBy(skillMasteryTable.studentId);
+  const studentsWithAnyMastery = new Set(allMasteryStudentRows.map((r) => r.studentId));
+  const neverPracticedIds = studentIds.filter((id) => !studentsWithAnyMastery.has(id));
+
+  const studentMap = new Map(students.map((s) => [s.id, s.displayName]));
+
+  const consecutiveStudentIds = [...new Set(consecutiveErrorRows.map((r) => r.studentId))];
+  // Combine stale-practice students + never-practiced students
+  const inactiveStudentIds = [...new Set([
+    ...inactiveRows.map((r) => r.studentId),
+    ...neverPracticedIds,
+  ])];
+
+  // Load dismissed alert IDs from teacherAlertsTable
+  const dismissed = await db.select({ studentId: teacherAlertsTable.studentId, alertType: teacherAlertsTable.alertType })
+    .from(teacherAlertsTable)
+    .where(and(eq(teacherAlertsTable.teacherId, teacherId), eq(teacherAlertsTable.resolved, true)));
+  const dismissedSet = new Set(dismissed.map((d) => `${d.studentId}-${d.alertType}`));
+
+  const alerts: {
+    id: string;
+    studentId: string;
+    studentName: string;
+    alertType: string;
+    message: string;
+    resolved: boolean;
+    createdAt: string;
+  }[] = [];
+
+  for (const sid of consecutiveStudentIds) {
+    const key = `${sid}-needs_reteaching`;
+    if (dismissedSet.has(key)) continue;
+    const name = studentMap.get(sid) ?? "Unknown Student";
+    alerts.push({
+      id: `${sid}-consecutive`,
+      studentId: sid,
+      studentName: name,
+      alertType: "needs_reteaching",
+      message: `${name} has made 3 or more consecutive errors on a skill and may need reteaching.`,
+      resolved: false,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  for (const sid of inactiveStudentIds) {
+    const key = `${sid}-low_engagement`;
+    if (dismissedSet.has(key) || alerts.some((a) => a.studentId === sid && a.alertType === "low_engagement")) continue;
+    const name = studentMap.get(sid) ?? "Unknown Student";
+    alerts.push({
+      id: `${sid}-inactive`,
+      studentId: sid,
+      studentName: name,
+      alertType: "low_engagement",
+      message: `${name} hasn't practiced in 3 or more days.`,
+      resolved: false,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  return alerts.slice(0, limit);
+}
 
 // GET /api/teacher/alerts
 router.get("/teacher/alerts", requireTeacher, async (req, res) => {
   const teacherId = req.user!.id;
-  const alerts = await db.select().from(teacherAlertsTable).where(
-    eq(teacherAlertsTable.teacherId, teacherId)
-  ).limit(20);
+  const studentIds = await getTeacherStudentIds(teacherId);
+  const students = studentIds.length > 0
+    ? await db.select({ id: studentProfilesTable.id, displayName: studentProfilesTable.displayName })
+        .from(studentProfilesTable).where(inArray(studentProfilesTable.id, studentIds))
+    : [];
+
+  const alerts = await computeLiveAlerts(teacherId, studentIds, students, 20);
   return res.json(alerts);
+});
+
+// POST /api/teacher/alerts/:alertId/resolve
+router.post("/teacher/alerts/:alertId/resolve", requireTeacher, async (req, res) => {
+  const teacherId = req.user!.id;
+  const alertId = req.params.alertId as string;
+
+  // alertId format: "{studentId}-{consecutive|inactive}"
+  const parts = alertId.split("-");
+  if (parts.length < 2) return res.status(400).json({ error: "Invalid alertId" });
+
+  // Determine alertType from suffix
+  const suffix = parts[parts.length - 1];
+  const studentId = parts.slice(0, -1).join("-");
+  const alertType = suffix === "consecutive" ? "needs_reteaching" : "low_engagement";
+
+  // Upsert a "dismissed" record into teacherAlertsTable
+  const existing = await db.select().from(teacherAlertsTable)
+    .where(and(
+      eq(teacherAlertsTable.teacherId, teacherId),
+      eq(teacherAlertsTable.studentId, studentId as any),
+      eq(teacherAlertsTable.alertType, alertType),
+    ))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db.update(teacherAlertsTable)
+      .set({ resolved: true })
+      .where(eq(teacherAlertsTable.id, existing[0].id));
+  } else {
+    await db.insert(teacherAlertsTable).values({
+      teacherId,
+      studentId: studentId as any,
+      studentName: "Unknown",
+      alertType,
+      message: "Dismissed",
+      resolved: true,
+    });
+  }
+
+  return res.json({ ok: true });
 });
 
 // GET /api/teacher/analytics/:classId

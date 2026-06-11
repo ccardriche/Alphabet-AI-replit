@@ -842,7 +842,7 @@ paths:
     get:
       operationId: listTeacherAlerts
       tags: [teacher]
-      summary: List intervention alerts for teacher
+      summary: List intervention alerts for teacher (computed from live skill_mastery data)
       responses:
         "200":
           description: Alerts
@@ -852,6 +852,44 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/TeacherAlert"
+
+  /teacher/alerts/{alertId}/resolve:
+    post:
+      operationId: resolveTeacherAlert
+      tags: [teacher]
+      summary: Dismiss/resolve a teacher alert
+      parameters:
+        - in: path
+          name: alertId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Alert resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResolveAlertResult"
+
+  /teacher/classes/join:
+    post:
+      operationId: joinClassByCode
+      tags: [teacher]
+      summary: Student joins a class using a class join code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinClassInput"
+      responses:
+        "200":
+          description: Class joined successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherClass"
 
   # ── LESSONS / CONTENT ──────────────────────────────────────────────────────
   /lessons:
@@ -1906,6 +1944,19 @@ components:
         schoolName:
           type: string
 
+    JoinClassInput:
+      type: object
+      required: [classCode]
+      properties:
+        classCode:
+          type: string
+
+    ResolveAlertResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+
     StudentRosterEntry:
       type: object
       required: [studentId, displayName, grade, avgSmartScore, lastActive]
@@ -2016,6 +2067,27 @@ components:
           type: boolean
 
     # ── LESSONS ───────────────────────────────────────────────────────────────
+    PracticeQuestion:
+      type: object
+      required: [questionText, options, correctOptionId, explanation]
+      properties:
+        questionText:
+          type: string
+        options:
+          type: array
+          items:
+            type: object
+            required: [id, text]
+            properties:
+              id:
+                type: string
+              text:
+                type: string
+        correctOptionId:
+          type: string
+        explanation:
+          type: string
+
     LessonSession:
       type: object
       required: [id, title, gradeLevel, domain, status]
@@ -2044,9 +2116,13 @@ components:
           type: array
           items:
             type: string
+        practiceQuestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PracticeQuestion"
         status:
           type: string
-          enum: [draft, published]
+          enum: [draft, published, completed]
         createdAt:
           type: string
 

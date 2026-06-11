@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { LessonSessionStatus } from './lessonSessionStatus';
+import type { PracticeQuestion } from './practiceQuestion';
 
 export interface LessonSession {
   id: string;
@@ -19,6 +20,7 @@ export interface LessonSession {
   discussionQuestions?: string[];
   writingPrompts?: string[];
   vocabularyList?: string[];
+  practiceQuestions?: PracticeQuestion[];
   status: LessonSessionStatus;
   createdAt?: string;
 }

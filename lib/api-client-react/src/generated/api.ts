@@ -37,6 +37,7 @@ import type {
   HandleBrowserLoginCallbackParams,
   HealthStatus,
   InterventionPathway,
+  JoinClassInput,
   LessonGenerateInput,
   LessonSession,
   ListMasteryParams,
@@ -56,6 +57,7 @@ import type {
   PracticeSessionInput,
   ProfileUpdate,
   QuestionGenerateInput,
+  ResolveAlertResult,
   ReteachCompleteInput,
   ReteachCompleteResult,
   ReteachLesson,
@@ -3366,7 +3368,7 @@ export const getListTeacherAlertsUrl = () => {
 }
 
 /**
- * @summary List intervention alerts for teacher
+ * @summary List intervention alerts for teacher (computed from live skill_mastery data)
  */
 export const listTeacherAlerts = async ( options?: RequestInit): Promise<TeacherAlert[]> => {
 
@@ -3413,7 +3415,7 @@ export type ListTeacherAlertsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary List intervention alerts for teacher
+ * @summary List intervention alerts for teacher (computed from live skill_mastery data)
  */
 
 export function useListTeacherAlerts<TData = Awaited<ReturnType<typeof listTeacherAlerts>>, TError = ErrorType<unknown>>(
@@ -3433,6 +3435,147 @@ export function useListTeacherAlerts<TData = Awaited<ReturnType<typeof listTeach
 
 
 
+
+export const getResolveTeacherAlertUrl = (alertId: string,) => {
+
+
+
+
+  return `/api/teacher/alerts/${alertId}/resolve`
+}
+
+/**
+ * @summary Dismiss/resolve a teacher alert
+ */
+export const resolveTeacherAlert = async (alertId: string, options?: RequestInit): Promise<ResolveAlertResult> => {
+
+  return customFetch<ResolveAlertResult>(getResolveTeacherAlertUrl(alertId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getResolveTeacherAlertMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveTeacherAlert>>, TError,{alertId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveTeacherAlert>>, TError,{alertId: string}, TContext> => {
+
+const mutationKey = ['resolveTeacherAlert'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveTeacherAlert>>, {alertId: string}> = (props) => {
+          const {alertId} = props ?? {};
+
+          return  resolveTeacherAlert(alertId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveTeacherAlertMutationResult = NonNullable<Awaited<ReturnType<typeof resolveTeacherAlert>>>
+
+    export type ResolveTeacherAlertMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Dismiss/resolve a teacher alert
+ */
+export const useResolveTeacherAlert = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveTeacherAlert>>, TError,{alertId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveTeacherAlert>>,
+        TError,
+        {alertId: string},
+        TContext
+      > => {
+      return useMutation(getResolveTeacherAlertMutationOptions(options));
+    }
+
+export const getJoinClassByCodeUrl = () => {
+
+
+
+
+  return `/api/teacher/classes/join`
+}
+
+/**
+ * @summary Student joins a class using a class join code
+ */
+export const joinClassByCode = async (joinClassInput: JoinClassInput, options?: RequestInit): Promise<TeacherClass> => {
+
+  return customFetch<TeacherClass>(getJoinClassByCodeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      joinClassInput,)
+  }
+);}
+
+
+
+
+export const getJoinClassByCodeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinClassByCode>>, TError,{data: BodyType<JoinClassInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof joinClassByCode>>, TError,{data: BodyType<JoinClassInput>}, TContext> => {
+
+const mutationKey = ['joinClassByCode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof joinClassByCode>>, {data: BodyType<JoinClassInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  joinClassByCode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type JoinClassByCodeMutationResult = NonNullable<Awaited<ReturnType<typeof joinClassByCode>>>
+    export type JoinClassByCodeMutationBody = BodyType<JoinClassInput>
+    export type JoinClassByCodeMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Student joins a class using a class join code
+ */
+export const useJoinClassByCode = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinClassByCode>>, TError,{data: BodyType<JoinClassInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof joinClassByCode>>,
+        TError,
+        {data: BodyType<JoinClassInput>},
+        TContext
+      > => {
+      return useMutation(getJoinClassByCodeMutationOptions(options));
+    }
 
 export const getListLessonsUrl = () => {
 

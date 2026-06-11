@@ -7,7 +7,7 @@ import {
   getListClassStudentsQueryKey,
   getGetClassHeatmapQueryKey,
 } from "@workspace/api-client-react";
-import { Users, TrendingUp, AlertTriangle, CheckCircle } from "lucide-react";
+import { Users, TrendingUp, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { DOMAIN_COLORS, HEATMAP_COLOR } from "@/lib/constants";
@@ -20,18 +20,20 @@ export default function TeacherRoster() {
   const [filter, setFilter] = useState<Filter>("All");
 
   const { data: classes } = useListTeacherClasses();
-  const classId = classes?.[0]?.id ?? "demo-class";
+  const classId = classes?.[0]?.id ?? "";
 
-  const { data: students, isLoading } = useListClassStudents(classId, {
+  const { data: students, isLoading, dataUpdatedAt } = useListClassStudents(classId, {
     query: {
       queryKey: getListClassStudentsQueryKey(classId),
       enabled: !!classId,
+      refetchInterval: 30_000,
     },
   });
   const { data: heatmap } = useGetClassHeatmap(classId, {
     query: {
       queryKey: getGetClassHeatmapQueryKey(classId),
       enabled: !!classId,
+      refetchInterval: 30_000,
     },
   });
 
@@ -45,6 +47,10 @@ export default function TeacherRoster() {
 
   const domains = (heatmap as any)?.domains ?? Object.keys(DOMAIN_COLORS);
 
+  const updatedLabel = dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : null;
+
   if (isLoading) return (
     <Layout>
       <div className="p-6 space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
@@ -54,9 +60,17 @@ export default function TeacherRoster() {
   return (
     <Layout>
       <div className="p-6 max-w-6xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-1">Class Roster</h1>
-          <p className="text-sm text-muted-foreground">Standards mastery heatmap and student performance overview.</p>
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold mb-1">Class Roster</h1>
+            <p className="text-sm text-muted-foreground">Standards mastery heatmap and student performance overview.</p>
+          </div>
+          {updatedLabel && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5">
+              <RefreshCw className="w-3 h-3" />
+              Updated {updatedLabel}
+            </div>
+          )}
         </div>
 
         {/* Filter */}
@@ -77,82 +91,89 @@ export default function TeacherRoster() {
           <span className="ml-auto text-sm text-muted-foreground self-center">{filtered.length} students</span>
         </div>
 
-        {/* Heatmap table */}
-        <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground w-48 sticky left-0 bg-white">Student</th>
-                <th className="text-center px-3 py-3 font-medium text-muted-foreground">Grade</th>
-                <th className="text-center px-3 py-3 font-medium text-muted-foreground">Score</th>
-                <th className="text-center px-3 py-3 font-medium text-muted-foreground">Status</th>
-                {domains.map((d: string) => (
-                  <th key={d} className="text-center px-3 py-3" style={{ minWidth: 56 }}>
-                    <div
-                      className="mx-auto w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
-                      style={{ backgroundColor: DOMAIN_COLORS[d] ?? "#6b7280" }}
-                    >
-                      {d}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={4 + domains.length} className="text-center py-12 text-muted-foreground">
-                    <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                    <p>No students found</p>
-                  </td>
-                </tr>
-              ) : filtered.map((student, i) => {
-                const s = student as any;
-                const statusIcon = s.status === "on_track"
-                  ? <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-                  : s.status === "intervention"
-                    ? <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                    : <TrendingUp className="w-3.5 h-3.5 text-gray-400" />;
-                return (
-                  <motion.tr
-                    key={s.studentId ?? i}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="hover:bg-gray-50 transition-colors"
-                    data-testid={`student-row-${s.studentId}`}
-                  >
-                    <td className="px-4 py-3 sticky left-0 bg-white">
-                      <p className="font-medium truncate">{s.displayName}</p>
-                      {s.gradeGap != null && s.gradeGap > 0 && (
-                        <p className="text-xs text-red-500">-{s.gradeGap} grade gap</p>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-center text-xs">{s.grade}</td>
-                    <td className="px-3 py-3 text-center font-semibold">{Math.round(s.avgSmartScore ?? 0)}</td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center justify-center gap-1">
-                        {statusIcon}
-                        <span className="text-xs capitalize hidden sm:inline">{s.status?.replace(/_/g, " ")}</span>
+        {!classId ? (
+          <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-12 text-center">
+            <Users className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-40" />
+            <p className="text-sm text-muted-foreground font-medium">No class created yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Create a class from the Teacher Dashboard to get started.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground w-48 sticky left-0 bg-white">Student</th>
+                  <th className="text-center px-3 py-3 font-medium text-muted-foreground">Grade</th>
+                  <th className="text-center px-3 py-3 font-medium text-muted-foreground">Score</th>
+                  <th className="text-center px-3 py-3 font-medium text-muted-foreground">Status</th>
+                  {domains.map((d: string) => (
+                    <th key={d} className="text-center px-3 py-3" style={{ minWidth: 56 }}>
+                      <div
+                        className="mx-auto w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
+                        style={{ backgroundColor: DOMAIN_COLORS[d] ?? "#6b7280" }}
+                      >
+                        {d}
                       </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={4 + domains.length} className="text-center py-12 text-muted-foreground">
+                      <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                      <p>No students found</p>
                     </td>
-                    {domains.map((d: string) => {
-                      const ds = s.domainScores?.find((ds: any) => ds.domainCode === d);
-                      const score = ds?.score ?? 0;
-                      return (
-                        <td key={d} className="px-3 py-3 text-center">
-                          <div className={cn("mx-auto w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold", HEATMAP_COLOR(score))}>
-                            {score > 0 ? Math.round(score) : "—"}
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </motion.tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  </tr>
+                ) : filtered.map((student, i) => {
+                  const s = student as any;
+                  const statusIcon = s.status === "on_track"
+                    ? <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                    : s.status === "intervention"
+                      ? <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                      : <TrendingUp className="w-3.5 h-3.5 text-gray-400" />;
+                  return (
+                    <motion.tr
+                      key={s.studentId ?? i}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: i * 0.03 }}
+                      className="hover:bg-gray-50 transition-colors"
+                      data-testid={`student-row-${s.studentId}`}
+                    >
+                      <td className="px-4 py-3 sticky left-0 bg-white">
+                        <p className="font-medium truncate">{s.displayName}</p>
+                        {s.gradeGap != null && s.gradeGap > 0 && (
+                          <p className="text-xs text-red-500">-{s.gradeGap} grade gap</p>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-center text-xs">{s.grade}</td>
+                      <td className="px-3 py-3 text-center font-semibold">{Math.round(s.avgSmartScore ?? 0)}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          {statusIcon}
+                          <span className="text-xs capitalize hidden sm:inline">{s.status?.replace(/_/g, " ")}</span>
+                        </div>
+                      </td>
+                      {domains.map((d: string) => {
+                        const ds = s.domainScores?.find((ds: any) => ds.domainCode === d);
+                        const score = ds?.score ?? 0;
+                        return (
+                          <td key={d} className="px-3 py-3 text-center">
+                            <div className={cn("mx-auto w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold", HEATMAP_COLOR(score))}>
+                              {score > 0 ? Math.round(score) : "—"}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </motion.tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </Layout>
   );
