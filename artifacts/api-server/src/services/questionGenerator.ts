@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import OpenAI from "openai";
 import { db } from "@workspace/db";
 import { questionCacheTable } from "@workspace/db/schema";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -111,6 +111,9 @@ async function getCached(params: GenerateParams): Promise<AdaptiveQuestion | nul
 }
 
 async function setCached(params: GenerateParams, question: AdaptiveQuestion): Promise<void> {
+  if (!question.explanation || question.explanation.trim() === "") {
+    return;
+  }
   const { skillCode, thetaBand: band, culturalContextHash: ctxHash, activityType } = cacheKey(params);
   try {
     await db.insert(questionCacheTable).values({
@@ -120,6 +123,17 @@ async function setCached(params: GenerateParams, question: AdaptiveQuestion): Pr
       activityType,
       payload: question as any,
     });
+  } catch {
+  }
+}
+
+export async function purgeStaleQuestionCache(): Promise<void> {
+  try {
+    await db
+      .delete(questionCacheTable)
+      .where(
+        sql`(${questionCacheTable.payload}->>'explanation') IS NULL OR trim(${questionCacheTable.payload}->>'explanation') = ''`,
+      );
   } catch {
   }
 }

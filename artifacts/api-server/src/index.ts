@@ -10,6 +10,7 @@ for (const key of requiredEnvVars) {
 
 import app from "./app";
 import { logger } from "./lib/logger";
+import { purgeStaleQuestionCache } from "./services/questionGenerator";
 
 const rawPort = process.env["PORT"]!;
 const port = Number(rawPort);
@@ -26,4 +27,10 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  purgeStaleQuestionCache().then(() => {
+    logger.info("Question cache: stale entries without explanations purged");
+  }).catch((e: unknown) => {
+    logger.warn({ err: e }, "Question cache purge failed (non-fatal)");
+  });
 });
