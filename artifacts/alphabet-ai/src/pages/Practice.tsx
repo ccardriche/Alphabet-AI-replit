@@ -15,7 +15,7 @@ import {
   type BadgeStatus,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Zap, CheckCircle, XCircle, Trophy, RotateCcw } from "lucide-react";
+import { Zap, CheckCircle, XCircle, Trophy, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import BadgeCelebration from "@/components/BadgeCelebration";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,16 @@ import { DOMAIN_COLORS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
 import TTSButton from "@/components/TTSButton";
+
+type RecapItem = {
+  num: number;
+  skillName: string;
+  questionText: string;
+  correct: boolean;
+  selectedAnswerText: string | null;
+  correctAnswerText: string | null;
+  explanation: string | null;
+};
 
 const ACTIVITY_LABELS: Record<string, string> = {
   listen_repeat: "Listen & Repeat",
@@ -48,6 +58,8 @@ export default function Practice() {
   const [pendingBadges, setPendingBadges] = useState<BadgeStatus[]>([]);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [correctAnswerText, setCorrectAnswerText] = useState<string | null>(null);
+  const [recap, setRecap] = useState<RecapItem[]>([]);
+  const [expandedRecapIdx, setExpandedRecapIdx] = useState<number | null>(null);
 
   const search = useSearch();
   const focusSkillCode = useMemo(() => new URLSearchParams(search).get("skill") ?? undefined, [search]);
@@ -73,6 +85,8 @@ export default function Practice() {
       setSessionId(session.id);
       setActivityNum(0);
       setScore({ correct: 0, total: 0, xp: 0 });
+      setRecap([]);
+      setExpandedRecapIdx(null);
       setPhase("activity");
       setTimeout(() => refetchActivity(), 100);
     } catch {
@@ -89,6 +103,10 @@ export default function Practice() {
     setPhase("feedback");
     setScore((s) => ({ correct: s.correct + (cor ? 1 : 0), total: s.total + 1, xp: s.xp + (cor ? 10 : 2) }));
 
+    const selectedOptText = (q.options as { id: string; text: string }[])?.find((o) => o.id === selected)?.text ?? null;
+    const skillNameForRecap = (activity as any).skillName ?? "";
+    const questionTextForRecap = q.questionText ?? "";
+
     try {
       const result = await submitAnswer.mutateAsync({
         sessionId,
@@ -99,14 +117,40 @@ export default function Practice() {
           skillCode: (activity as any).skillCode,
         },
       });
-      if (result?.explanation) setExplanation(result.explanation);
-      if (result?.correctAnswerText) setCorrectAnswerText(result.correctAnswerText);
+      const expln = result?.explanation ?? null;
+      const correctText = result?.correctAnswerText ?? null;
+      if (expln) setExplanation(expln);
+      if (correctText) setCorrectAnswerText(correctText);
       if (result?.newBadges && result.newBadges.length > 0) {
         setPendingBadges(result.newBadges);
         queryClient.invalidateQueries({ queryKey: getGetMyBadgesQueryKey() });
       }
+      setRecap((prev) => [
+        ...prev,
+        {
+          num: prev.length + 1,
+          skillName: skillNameForRecap,
+          questionText: questionTextForRecap,
+          correct: cor,
+          selectedAnswerText: selectedOptText,
+          correctAnswerText: correctText,
+          explanation: cor ? null : expln,
+        },
+      ]);
     } catch {
       toast({ title: "Could not save your answer — check your connection and try again.", variant: "destructive" });
+      setRecap((prev) => [
+        ...prev,
+        {
+          num: prev.length + 1,
+          skillName: skillNameForRecap,
+          questionText: questionTextForRecap,
+          correct: cor,
+          selectedAnswerText: selectedOptText,
+          correctAnswerText: null,
+          explanation: null,
+        },
+      ]);
     }
   }
 
@@ -323,7 +367,7 @@ export default function Practice() {
                     <Trophy className="w-8 h-8 text-amber-500" />
                   </div>
                   <h2 className="text-2xl font-bold mb-2">Session Complete!</h2>
-                  <div className="grid grid-cols-3 gap-4 mb-8 mt-6">
+                  <div className="grid grid-cols-3 gap-4 mb-6 mt-6">
                     {[
                       { label: "Questions", value: score.total },
                       { label: "Correct", value: score.correct },
@@ -335,6 +379,83 @@ export default function Practice() {
                       </div>
                     ))}
                   </div>
+
+                  {recap.length > 0 && (
+                    <div className="mb-6 text-left">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Question Recap</p>
+                      <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                        {recap.map((item, idx) => {
+                          const isExpanded = expandedRecapIdx === idx;
+                          const canExpand = !item.correct && (item.explanation || item.correctAnswerText);
+                          return (
+                            <div
+                              key={idx}
+                              className={cn(
+                                "rounded-xl border text-sm transition-colors",
+                                item.correct
+                                  ? "border-green-200 bg-green-50"
+                                  : "border-red-200 bg-red-50",
+                              )}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => canExpand && setExpandedRecapIdx(isExpanded ? null : idx)}
+                                className={cn(
+                                  "w-full flex items-center gap-3 px-4 py-3 text-left",
+                                  canExpand && "cursor-pointer",
+                                )}
+                              >
+                                <div className="shrink-0">
+                                  {item.correct
+                                    ? <CheckCircle className="w-4 h-4 text-green-600" />
+                                    : <XCircle className="w-4 h-4 text-red-500" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn("font-medium leading-snug line-clamp-2", item.correct ? "text-green-800" : "text-red-800")}>
+                                    {item.questionText}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">{item.skillName}</p>
+                                </div>
+                                {canExpand && (
+                                  <div className="shrink-0 text-muted-foreground">
+                                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                  </div>
+                                )}
+                              </button>
+
+                              {canExpand && isExpanded && (
+                                <div className="px-4 pb-3 space-y-2 border-t border-red-100">
+                                  {item.selectedAnswerText && (
+                                    <div className="flex items-start gap-2 pt-2">
+                                      <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                                      <p className="text-xs text-red-700">
+                                        <span className="font-semibold">Your answer:</span> {item.selectedAnswerText}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {item.correctAnswerText && (
+                                    <div className="flex items-start gap-2">
+                                      <CheckCircle className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
+                                      <p className="text-xs text-green-800">
+                                        <span className="font-semibold">Correct answer:</span> {item.correctAnswerText}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {item.explanation && (
+                                    <div className="bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                                      <p className="text-xs font-semibold text-indigo-800 mb-0.5">Why?</p>
+                                      <p className="text-xs text-indigo-700 leading-relaxed">{item.explanation}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-3">
                     <Button variant="outline" onClick={handleStart} className="flex-1 gap-2" data-testid="btn-practice-again">
                       <RotateCcw className="w-4 h-4" /> Practice Again
