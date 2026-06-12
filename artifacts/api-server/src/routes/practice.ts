@@ -106,8 +106,8 @@ async function getStudentByUserId(userId: string) {
   return profile ?? null;
 }
 
-// POST /api/practice/start
-router.post("/practice/start", async (req, res) => {
+// POST /api/practice/session
+router.post("/practice/session", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const student = await getStudentByUserId(req.user!.id);
   if (!student) return res.status(404).json({ error: "Student profile not found. Complete onboarding first." });
@@ -125,8 +125,8 @@ router.post("/practice/start", async (req, res) => {
   return res.status(201).json(session);
 });
 
-// GET /api/practice/:sessionId/next
-router.get("/practice/:sessionId/next", async (req, res) => {
+// GET /api/practice/session/:sessionId/activity
+router.get("/practice/session/:sessionId/activity", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
 
@@ -266,8 +266,8 @@ router.get("/practice/:sessionId/next", async (req, res) => {
   });
 });
 
-// POST /api/practice/:sessionId/answer
-router.post("/practice/:sessionId/answer", async (req, res) => {
+// POST /api/practice/session/:sessionId/submit
+router.post("/practice/session/:sessionId/submit", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
   const { questionId, selectedOptionId, correct, skillCode, timeSpentSeconds, irt } = req.body;
@@ -439,8 +439,8 @@ router.post("/practice/:sessionId/answer", async (req, res) => {
   });
 });
 
-// POST /api/practice/:sessionId/complete
-router.post("/practice/:sessionId/complete", async (req, res) => {
+// POST /api/practice/session/:sessionId/complete
+router.post("/practice/session/:sessionId/complete", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
   const { totalQuestions, correctAnswers, durationMin } = req.body;

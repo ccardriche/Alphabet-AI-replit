@@ -57,8 +57,8 @@ router.post("/placement/start", async (req, res) => {
   return res.status(201).json(session);
 });
 
-// GET /api/placement/:sessionId/next
-router.get("/placement/:sessionId/next", async (req, res) => {
+// GET /api/placement/:sessionId/question
+router.get("/placement/:sessionId/question", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
 
