@@ -22,8 +22,14 @@ import { generateQuestion, AdaptiveQuestionSchema } from "../services/questionGe
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  baseURL: process.env.OPENAI_API_BASE_URL ?? "https://api.openai.com/v1",
-  apiKey: process.env.OPENAI_API_KEY ?? "sk-placeholder",
+  baseURL:
+    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ??
+    process.env.OPENAI_API_BASE_URL ??
+    "https://api.openai.com/v1",
+  apiKey:
+    process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
+    process.env.OPENAI_API_KEY ??
+    "sk-placeholder",
 });
 
 async function getQuestionFromCache(questionId: string) {

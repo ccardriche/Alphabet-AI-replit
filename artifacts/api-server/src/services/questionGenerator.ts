@@ -3,13 +3,17 @@ import OpenAI from "openai";
 import { db } from "@workspace/db";
 import { questionCacheTable } from "@workspace/db/schema";
 import { and, eq, gt, sql } from "drizzle-orm";
-import { createRequire } from "module";
-import { fileURLToPath } from "url";
-import path from "path";
+import fallbackQuestionsData from "../data/fallback-questions.json" with { type: "json" };
 
 const openai = new OpenAI({
-  baseURL: process.env.OPENAI_API_BASE_URL ?? "https://api.openai.com/v1",
-  apiKey: process.env.OPENAI_API_KEY ?? "sk-placeholder",
+  baseURL:
+    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ??
+    process.env.OPENAI_API_BASE_URL ??
+    "https://api.openai.com/v1",
+  apiKey:
+    process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
+    process.env.OPENAI_API_KEY ??
+    "sk-placeholder",
 });
 
 export const AdaptiveQuestionSchema = z.object({
@@ -145,9 +149,7 @@ export async function purgeStaleQuestionCache(): Promise<void> {
 }
 
 function loadFallbackPool(): Record<string, AdaptiveQuestion[]> {
-  const require = createRequire(import.meta.url);
-  const dataPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "../data/fallback-questions.json");
-  return require(dataPath) as Record<string, AdaptiveQuestion[]>;
+  return fallbackQuestionsData as unknown as Record<string, AdaptiveQuestion[]>;
 }
 
 let _fallbackPool: Record<string, AdaptiveQuestion[]> | null = null;
