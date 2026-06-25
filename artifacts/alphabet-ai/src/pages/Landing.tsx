@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { GraduationCap, BookOpen, Users, ArrowRight, Star, TrendingUp, Brain, LogIn, Heart } from "lucide-react";
+import { GraduationCap, BookOpen, Users, ArrowRight, Star, TrendingUp, Brain, LogIn, Heart, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useGetStudentProfile, getGetStudentProfileQueryKey, useGetCaregiverProfile, getGetCaregiverProfileQueryKey } from "@workspace/api-client-react";
@@ -92,167 +92,194 @@ export default function Landing() {
 
   if (isAuthenticated && profileLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a1a]">
+        <div className="w-16 h-16 relative">
+           <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20" />
+           <div className="absolute inset-0 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
+        </div>
+        <p className="mt-6 text-indigo-400 font-black uppercase tracking-widest text-sm animate-pulse">Initializing System</p>
       </div>
     );
   }
 
   const features = [
-    { icon: Brain, label: "Adaptive IRT Engine", desc: "Questions calibrate to each student's level in real time" },
-    { icon: TrendingUp, label: "SmartScore Mastery", desc: "Continuous 0-100 scores track every skill precisely" },
-    { icon: Star, label: "Culturally Responsive", desc: "Content reflects student interests and cultural identity" },
-    { icon: BookOpen, label: "Science of Reading", desc: "Built on phonics, phonemic awareness, and fluency research" },
+    { icon: Brain, label: "Adaptive AI", desc: "Real-time mission difficulty calibration" },
+    { icon: TrendingUp, label: "SmartScore Engine", desc: "0-100 mastery tracking per skill vector" },
+    { icon: Star, label: "Identity Sync", desc: "Missions adapt to operator preferences" },
+    { icon: BookOpen, label: "Core Protocol", desc: "Built on foundational reading science" },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 text-white overflow-hidden">
-      <div className="absolute inset-0 opacity-10" style={{
-        backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-        backgroundSize: "40px 40px"
+    <div className="min-h-[100dvh] bg-[#0a0a1a] text-white overflow-hidden relative">
+      {/* Cyber Grid Background */}
+      <div className="absolute inset-0 opacity-20" style={{
+        backgroundImage: "linear-gradient(rgba(139, 92, 246, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(139, 92, 246, 0.15) 1px, transparent 1px)",
+        backgroundSize: "48px 48px"
       }} />
+      {/* Glow Orbs */}
+      <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-fuchsia-600/20 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="relative z-10 max-w-6xl mx-auto px-6 py-16">
+      <div className="relative z-10 max-w-6xl mx-auto px-6 py-12 md:py-20 min-h-[100dvh] flex flex-col">
+        
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="flex items-center gap-3 mb-16"
+          className="flex items-center gap-4 mb-16 md:mb-24"
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-400 flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-white" />
+          <div className="w-12 h-12 rounded-2xl game-gradient flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.5)]">
+            <GraduationCap className="w-6 h-6 text-white" />
           </div>
-          <span className="text-xl font-bold">Alphabet AI</span>
+          <span className="text-2xl font-heading font-black tracking-tight uppercase">Alphabet AI</span>
         </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-16 items-center mb-24">
+        <div className="flex-1 flex flex-col lg:flex-row gap-16 lg:gap-24 items-center">
+          
+          {/* Left Content */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7, delay: 0.1 }}
+            className="flex-1"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-medium mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-              K-12 Adaptive ELA Platform
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-primary font-black text-[10px] uppercase tracking-widest mb-8">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              K-12 Literacy Engine
             </div>
-            <h1 className="text-5xl lg:text-6xl font-extrabold leading-tight mb-6">
-              Every student
+            
+            <h1 className="text-5xl md:text-7xl font-heading font-black leading-[1.1] mb-6 uppercase">
+              Master Reading.
               <br />
-              <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                reading at level.
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-fuchsia-500">
+                Unlock Worlds.
               </span>
             </h1>
-            <p className="text-lg text-slate-300 mb-10 leading-relaxed">
-              Alphabet AI delivers personalized, culturally-responsive ELA practice grounded in the Science of Reading — adapting to each student in real time.
+            
+            <p className="text-lg md:text-xl text-slate-300 font-medium mb-12 leading-relaxed max-w-xl">
+              Engage with adaptive missions calibrated to your exact skill level. Train your reading, earn XP, and track your mastery.
             </p>
 
             {authLoading ? (
-              <div className="flex items-center gap-2 text-slate-400 h-12">
-                <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm">Loading…</span>
+              <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-6 w-max">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="font-bold uppercase tracking-widest text-sm">Authenticating...</span>
               </div>
             ) : !isAuthenticated ? (
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold px-8 gap-2"
+                className="game-gradient text-white font-black text-lg uppercase tracking-widest h-16 px-10 rounded-2xl hover:-translate-y-1 active:translate-y-1 transition-all shadow-[0_8px_0_rgba(0,0,0,0.3)] hover:shadow-[0_4px_0_rgba(0,0,0,0.3)] border-b-4 border-black/20 w-full sm:w-auto"
                 onClick={() => login()}
                 data-testid="btn-login"
               >
-                <LogIn className="w-4 h-4" />
-                Sign in to get started
-                <ArrowRight className="w-4 h-4" />
+                <LogIn className="w-5 h-5 mr-3" />
+                INITIALIZE LOGIN
               </Button>
             ) : (
-              <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-                <Button
-                  size="lg"
-                  className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold px-8 gap-2"
-                  onClick={() => handleRole("student")}
-                  data-testid="btn-student-login"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  I am a Student
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white font-semibold px-8 gap-2"
-                  onClick={() => handleRole("teacher")}
-                  data-testid="btn-teacher-login"
-                >
-                  <Users className="w-4 h-4" />
-                  I am a Teacher
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-rose-700 text-rose-300 hover:bg-rose-900/30 hover:text-rose-200 font-semibold px-8 gap-2"
-                  onClick={() => handleRole("caregiver")}
-                  data-testid="btn-caregiver-login"
-                >
-                  <Heart className="w-4 h-4" />
-                  I am a Family Member
-                </Button>
+              <div className="space-y-6">
+                <p className="font-black text-sm text-slate-400 uppercase tracking-widest">Select Operating Mode</p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <Button
+                    size="lg"
+                    className="game-gradient text-white font-black text-base uppercase tracking-widest h-16 rounded-2xl hover:-translate-y-1 shadow-[0_8px_0_rgba(0,0,0,0.3)] border-b-4 border-black/20"
+                    onClick={() => handleRole("student")}
+                    data-testid="btn-student-login"
+                  >
+                    <BookOpen className="w-5 h-5 mr-2" />
+                    Agent Mode
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="bg-slate-900/50 border-2 border-slate-700 text-slate-200 hover:bg-slate-800 hover:border-slate-500 font-black text-base uppercase tracking-widest h-16 rounded-2xl hover:-translate-y-1"
+                    onClick={() => handleRole("teacher")}
+                    data-testid="btn-teacher-login"
+                  >
+                    <Users className="w-5 h-5 mr-2 text-blue-400" />
+                    Command
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="bg-slate-900/50 border-2 border-slate-700 text-slate-200 hover:bg-slate-800 hover:border-slate-500 font-black text-base uppercase tracking-widest h-16 rounded-2xl hover:-translate-y-1 sm:col-span-2"
+                    onClick={() => handleRole("caregiver")}
+                    data-testid="btn-caregiver-login"
+                  >
+                    <Heart className="w-5 h-5 mr-2 text-rose-400" />
+                    Support Team
+                  </Button>
+                </div>
               </div>
             )}
           </motion.div>
 
+          {/* Right Visual (Hidden on mobile) */}
           <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="hidden lg:block"
+            initial={{ opacity: 0, x: 30, rotateY: 20 }}
+            animate={{ opacity: 1, x: 0, rotateY: 0 }}
+            transition={{ duration: 0.8, delay: 0.2, type: "spring" }}
+            className="hidden lg:block flex-1 perspective-1000"
           >
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm space-y-4">
-              {[
-                { domain: "RL", label: "Literature", score: 87, color: "#3b82f6" },
-                { domain: "RF", label: "Foundations", score: 72, color: "#8b5cf6" },
-                { domain: "W", label: "Writing", score: 64, color: "#10b981" },
-                { domain: "L", label: "Language", score: 91, color: "#f43f5e" },
-              ].map((item) => (
-                <div key={item.domain} className="flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: item.color }}>
-                    {item.domain}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm text-slate-300">{item.label}</span>
-                      <span className="text-sm font-semibold text-white">{item.score}</span>
+            <div className="bg-slate-900/80 border-2 border-slate-700/50 rounded-3xl p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden transform rotate-y-[-10deg] rotate-x-[5deg]">
+              <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-500 via-primary to-fuchsia-500" />
+              
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="font-heading font-black uppercase tracking-wider text-xl flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-primary" /> Sector Status
+                </h3>
+                <span className="px-3 py-1 rounded-md bg-green-500/20 text-green-400 font-black text-[10px] uppercase tracking-widest border border-green-500/30">Live Sync</span>
+              </div>
+
+              <div className="space-y-6">
+                {[
+                  { domain: "RL", label: "LITERATURE", score: 87, color: "#3b82f6" },
+                  { domain: "RF", label: "FOUNDATIONS", score: 72, color: "#8b5cf6" },
+                  { domain: "W", label: "WRITING", score: 64, color: "#10b981" },
+                  { domain: "L", label: "LANGUAGE", score: 91, color: "#f43f5e" },
+                ].map((item, i) => (
+                  <div key={item.domain} className="flex items-center gap-5">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black text-white shadow-lg" style={{ backgroundColor: item.color }}>
+                      {item.domain}
                     </div>
-                    <div className="h-1.5 rounded-full bg-white/10">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${item.score}%` }}
-                        transition={{ duration: 1, delay: 0.5 }}
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
+                    <div className="flex-1">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">{item.label}</span>
+                        <span className="text-xs font-black text-white">{item.score} / 100</span>
+                      </div>
+                      <div className="h-2.5 rounded-full bg-slate-800 border border-slate-700 shadow-inner overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${item.score}%` }}
+                          transition={{ duration: 1.5, delay: 0.5 + (i * 0.1), ease: "easeOut" }}
+                          className="h-full rounded-full relative"
+                          style={{ backgroundColor: item.color }}
+                        >
+                          <div className="absolute inset-0 bg-white/20 w-full" style={{ backgroundImage: 'linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent)', backgroundSize: '1rem 1rem' }} />
+                        </motion.div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-                <span className="text-xs text-slate-400">Student SmartScore avg</span>
-                <span className="text-sm font-bold text-white">78.5</span>
+                ))}
               </div>
             </div>
           </motion.div>
         </div>
 
+        {/* Bottom Feature Grid */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"
+          className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-auto pt-16"
         >
           {features.map(({ icon: Icon, label, desc }) => (
-            <div key={label} className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/8 transition-colors">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center mb-3">
-                <Icon className="w-4 h-4 text-indigo-300" />
+            <div key={label} className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 hover:bg-slate-800/60 transition-colors group">
+              <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform border border-slate-700">
+                <Icon className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-sm font-semibold text-white mb-1">{label}</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">{desc}</p>
+              <h3 className="text-sm font-black text-white mb-2 uppercase tracking-wide">{label}</h3>
+              <p className="text-xs font-medium text-slate-400 leading-relaxed">{desc}</p>
             </div>
           ))}
         </motion.div>

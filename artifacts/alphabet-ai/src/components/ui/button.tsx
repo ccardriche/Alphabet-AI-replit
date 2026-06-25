@@ -5,34 +5,26 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0" +
-" hover-elevate active-elevate-2",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-95",
   {
     variants: {
       variant: {
         default:
-           // @replit: no hover, and add primary border
-           "bg-primary text-primary-foreground border border-primary-border",
+          "bg-gradient-to-b from-primary to-[hsl(var(--primary)/0.8)] text-primary-foreground shadow-[0_4px_0_0_hsl(var(--primary)/0.4)] hover:-translate-y-0.5 hover:shadow-[0_6px_0_0_hsl(var(--primary)/0.4)] active:shadow-none active:translate-y-1 border-b-[1px] border-primary-border",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm border-destructive-border",
+          "bg-gradient-to-b from-destructive to-[hsl(var(--destructive)/0.8)] text-destructive-foreground shadow-[0_4px_0_0_hsl(var(--destructive)/0.4)] hover:-translate-y-0.5 hover:shadow-[0_6px_0_0_hsl(var(--destructive)/0.4)] active:shadow-none active:translate-y-1",
         outline:
-          // @replit Shows the background color of whatever card / sidebar / accent background it is inside of.
-          // Inherits the current text color. Uses shadow-xs. no shadow on active
-          // No hover state
-          " border [border-color:var(--button-outline)] shadow-xs active:shadow-none ",
+          "border-2 border-input bg-background hover:bg-accent hover:text-accent-foreground hover:border-accent shadow-[0_2px_0_0_hsl(var(--input))] active:shadow-none active:translate-y-0.5",
         secondary:
-          // @replit border, no hover, no shadow, secondary border.
-          "border bg-secondary text-secondary-foreground border border-secondary-border ",
-        // @replit no hover, transparent border
-        ghost: "border border-transparent",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-[0_4px_0_0_hsl(var(--secondary)/0.5)] active:shadow-none active:translate-y-1",
+        ghost: "hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        // @replit changed sizes
-        default: "min-h-9 px-4 py-2",
-        sm: "min-h-8 rounded-md px-3 text-xs",
-        lg: "min-h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        default: "min-h-10 px-5 py-2",
+        sm: "min-h-8 rounded-lg px-4 text-xs",
+        lg: "min-h-12 rounded-2xl px-10 text-base",
+        icon: "h-10 w-10 rounded-xl",
       },
     },
     defaultVariants: {

@@ -1,0 +1,130 @@
+Paste this into **Replit Agent**:
+
+```text
+Improve the UI design of this app to make it more visually vibrant, kid-friendly, and engaging, similar to the energy of Fortnite-style design, but do not copy Fortnite branding, characters, logos, or exact assets.
+
+Goal:
+Make the app feel exciting, modern, colorful, and motivating for students while still being appropriate for an educational product.
+
+Design Direction:
+- Use a vibrant, high-energy color palette with electric blues, purples, neon greens, bright pinks, deep navy, and bold gradients.
+- Create a playful “game-like” learning environment.
+- Make the dashboard feel like students are entering a learning arena or mission hub.
+- Use large cards, badges, progress bars, achievement-style visuals, and strong call-to-action buttons.
+- Add visual hierarchy so the most important student action is obvious.
+- Make it feel fun, but not childish.
+- Keep it clean enough for funders, parents, and educators to take seriously.
+
+Specific UI improvements:
+1. Improve the homepage/dashboard layout.
+2. Make buttons more exciting with gradients, rounded corners, shadows, and hover states.
+3. Add achievement-style cards or badges where appropriate.
+4. Improve typography so headings feel bold and energetic.
+5. Add subtle animations using existing libraries only if already installed.
+6. Improve empty states so they feel encouraging, not boring.
+7. Improve spacing, padding, and layout consistency.
+8. Use icons where helpful.
+9. Make the interface feel more interactive and rewarding for kids.
+10. Keep the app responsive for desktop, tablet, and mobile.
+
+Important constraints:
+- Do not rewrite the full app.
+- Do not break existing functionality.
+- Do not change authentication, database logic, routing, API calls, or core business logic.
+- Do not add new heavy dependencies unless absolutely necessary.
+- Do not use copyrighted Fortnite assets, names, logos, skins, weapons, maps, or direct visual copies.
+- Keep the product’s original educational purpose clear.
+- Preserve existing brand names and app names.
+- Before making changes, identify the key UI files/components you will update.
+- After making changes, summarize exactly what files were changed.
+
+Style inspiration:
+Think “student mission control,” “learning quest,” “XP progress,” “achievement badges,” “bright game dashboard,” and “AI-powered learning arena.”
+
+Please start by improving the main dashboard and landing experience first.
+```
+
+A stronger version if this is for **Numbers AI** specifically:
+
+```text
+Improve the UI of the Numbers AI app in artifacts/numbers-ai so it feels more visually vibrant, game-like, and exciting for kids. Use Fortnite-inspired energy — bright colors, gradients, XP-style progress, mission cards, badges, and bold buttons — but do not copy Fortnite branding, characters, logos, or copyrighted assets.
+
+Focus first on:
+1. Main dashboard
+2. Student practice flow
+3. Question cards
+4. Progress/score areas
+5. Empty states
+6. Buttons and navigation
+
+Use a vibrant palette:
+- Electric blue
+- Neon purple
+- Bright green
+- Hot pink
+- Deep navy
+- Yellow/gold accents
+
+Design goals:
+- Make students feel like they are entering a learning mission.
+- Make practice feel rewarding.
+- Make correct answers feel celebratory.
+- Make progress feel visible.
+- Make the UI polished enough for funders to demo.
+
+Constraints:
+- Do not change app functionality.
+- Do not change backend/API logic.
+- Do not change authentication.
+- Do not add copyrighted Fortnite assets.
+- Do not introduce heavy new dependencies.
+- Use existing components and Tailwind styling where possible.
+- Keep the app responsive.
+
+After changes, run:
+cd artifacts/numbers-ai && pnpm run build
+
+Then summarize:
+- Files changed
+- Design improvements made
+- Whether the build passed
+- Anything still needing review
+```
+
+For **Alphabet AI**, use this version:
+
+```text
+Improve the UI of the Alphabet AI app in artifacts/alphabet-ai so it feels more visually vibrant, game-like, and exciting for kids. Use Fortnite-inspired energy — bright colors, gradients, mission cards, badges, XP progress, and bold interactive buttons — but do not copy Fortnite branding, characters, logos, or copyrighted assets.
+
+Focus first on:
+1. Main dashboard
+2. Student reading/literacy practice flow
+3. Activity cards
+4. Progress/score areas
+5. Empty states
+6. Buttons and navigation
+
+Design goals:
+- Make students feel like they are entering a literacy mission.
+- Make reading and alphabet practice feel rewarding.
+- Make progress easy to see.
+- Make the app feel polished for funders, parents, and educators.
+
+Constraints:
+- Do not change app functionality.
+- Do not change backend/API logic.
+- Do not change authentication.
+- Do not add copyrighted Fortnite assets.
+- Do not introduce heavy new dependencies.
+- Use existing components and Tailwind styling where possible.
+- Keep the app responsive.
+
+After changes, run:
+cd artifacts/alphabet-ai && pnpm run build
+
+Then summarize:
+- Files changed
+- Design improvements made
+- Whether the build passed
+- Anything still needing review
+```
