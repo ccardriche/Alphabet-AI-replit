@@ -43,20 +43,20 @@ type Phase = "intro" | "question" | "result";
 const TARGET_QUESTIONS = 12;
 
 const ITEM_TYPE_META: Record<string, { label: string; icon: typeof BookOpen }> = {
-  multiple_choice: { label: "READING SCAN", icon: BookOpen },
-  comprehension: { label: "COMPREHENSION", icon: BookOpen },
-  vocabulary: { label: "VOCABULARY", icon: Lightbulb },
-  fill_blank: { label: "SYNTAX REPAIR", icon: PenLine },
+  multiple_choice: { label: "READING", icon: BookOpen },
+  comprehension: { label: "READING", icon: BookOpen },
+  vocabulary: { label: "WORDS", icon: Lightbulb },
+  fill_blank: { label: "FILL IN", icon: PenLine },
 };
 
 const LEVEL_META: Record<
   string,
   { label: string; bar: string; chip: string; text: string }
 > = {
-  strength: { label: "STRENGTH", bar: "bg-green-500", chip: "bg-green-500/20 text-green-500 border border-green-500/30", text: "text-green-500" },
-  on_track: { label: "ON TRACK", bar: "bg-primary", chip: "bg-primary/20 text-primary border border-primary/30", text: "text-primary" },
-  gap: { label: "PRIORITY", bar: "bg-amber-500", chip: "bg-amber-500/20 text-amber-500 border border-amber-500/30", text: "text-amber-500" },
-  not_assessed: { label: "PENDING", bar: "bg-muted-foreground/30", chip: "bg-muted text-muted-foreground border border-border", text: "text-muted-foreground" },
+  strength: { label: "GREAT", bar: "bg-green-500", chip: "bg-green-500/20 text-green-500 border border-green-500/30", text: "text-green-500" },
+  on_track: { label: "GOOD", bar: "bg-primary", chip: "bg-primary/20 text-primary border border-primary/30", text: "text-primary" },
+  gap: { label: "PRACTICE", bar: "bg-amber-500", chip: "bg-amber-500/20 text-amber-500 border border-amber-500/30", text: "text-amber-500" },
+  not_assessed: { label: "NOT YET", bar: "bg-muted-foreground/30", chip: "bg-muted text-muted-foreground border border-border", text: "text-muted-foreground" },
 };
 
 /** Renders passage text, bolding any **word** the generator marked as a vocab target. */
@@ -183,8 +183,8 @@ export default function Placement() {
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
-              <span className="font-heading font-black text-foreground uppercase tracking-wide leading-none block">System Calibration</span>
-              <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Initial Scan</span>
+              <span className="font-heading font-black text-foreground uppercase tracking-wide leading-none block">Reading Check</span>
+              <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Let's Begin</span>
             </div>
           </div>
           
@@ -192,7 +192,7 @@ export default function Placement() {
             {phase === "question" && (
               <div className="flex flex-col items-end gap-1.5">
                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                  SCAN PROGRESS {Math.min(questionCount + 1, TARGET_QUESTIONS)}/{TARGET_QUESTIONS}
+                  QUESTION {Math.min(questionCount + 1, TARGET_QUESTIONS)} OF {TARGET_QUESTIONS}
                 </span>
                 <div className="w-32 h-2.5 rounded-full bg-muted overflow-hidden border border-border shadow-inner">
                   <motion.div 
@@ -226,16 +226,16 @@ export default function Placement() {
                   <Activity className="w-12 h-12 text-primary" />
                 </div>
                 
-                <h1 className="text-3xl md:text-5xl font-heading font-black mb-4 uppercase text-foreground">Initiate Neural Link</h1>
+                <h1 className="text-3xl md:text-5xl font-heading font-black mb-4 uppercase text-foreground">Let's See What You Know!</h1>
                 <p className="text-muted-foreground mb-10 text-lg font-medium max-w-md mx-auto">
-                  A rapid diagnostic scan to map your current proficiency. System adapts in real-time. No penalties applied.
+                  We will ask you some fun reading questions. This helps us find the right level just for you. Try your best!
                 </p>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 text-left">
                   {[
-                    { icon: BookOpen, title: "DATA INGEST", desc: "Process brief texts", color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-                    { icon: Lightbulb, title: "LEXICON", desc: "Identify definitions", color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-                    { icon: PenLine, title: "SYNTAX", desc: "Repair sequences", color: "text-purple-500", bg: "bg-purple-500/10", border: "border-purple-500/20" }
+                    { icon: BookOpen, title: "READING", desc: "Read short stories", color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+                    { icon: Lightbulb, title: "WORDS", desc: "Find what words mean", color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+                    { icon: PenLine, title: "FILL IN", desc: "Pick the right word", color: "text-purple-500", bg: "bg-purple-500/10", border: "border-purple-500/20" }
                   ].map((item, i) => (
                     <div key={i} className={`rounded-2xl ${item.bg} border-2 ${item.border} p-4 text-center sm:text-left`}>
                       <item.icon className={`w-6 h-6 ${item.color} mb-3 mx-auto sm:mx-0`} />
@@ -252,7 +252,7 @@ export default function Placement() {
                   className="w-full sm:w-auto min-w-[240px] game-gradient text-white px-12 h-16 rounded-2xl font-black text-xl uppercase tracking-widest border-b-[6px] border-black/20 hover:border-black/40 bouncy-hover shadow-xl"
                   data-testid="btn-start-assessment"
                 >
-                  {startPlacement.isPending ? "INITIALIZING..." : "COMMENCE SCAN"}
+                  {startPlacement.isPending ? "GETTING READY..." : "LET'S GO!"}
                 </Button>
               </div>
             </motion.div>
@@ -273,7 +273,7 @@ export default function Placement() {
                     className="mb-6 inline-flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-2"
                   >
                     <Flame className="w-5 h-5 text-amber-500 animate-pulse" /> 
-                    <span className="text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">{streak}x COMBO MULTIPLIER</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">{streak} IN A ROW!</span>
                   </motion.div>
                 )}
 
@@ -378,7 +378,7 @@ export default function Placement() {
                         </div>
                         <div className="flex-1">
                           <p className={cn("font-heading font-black uppercase tracking-wide mb-1", correct ? "text-green-600 dark:text-green-400" : "text-red-500")}>
-                            {correct ? "DATA VERIFIED" : "INCORRECT CALIBRATION"}
+                            {correct ? "GREAT JOB!" : "GOOD TRY!"}
                           </p>
                           <p className="text-sm font-medium text-muted-foreground">{(question as any).explanation}</p>
                         </div>
@@ -391,7 +391,7 @@ export default function Placement() {
                         className="w-full mt-6 game-gradient text-white font-black text-xl uppercase tracking-widest h-16 rounded-2xl bouncy-hover shadow-[0_8px_0_rgba(0,0,0,0.2)] border-b-[6px] border-black/20"
                         data-testid="btn-next-question"
                       >
-                        {isLoadingQuestion ? "PROCESSING..." : "CONTINUE SCAN"}
+                        {isLoadingQuestion ? "LOADING..." : "NEXT"}
                       </Button>
                     </motion.div>
                   )}
@@ -405,7 +405,7 @@ export default function Placement() {
                     className="w-full mt-8 bg-foreground text-background font-black text-xl uppercase tracking-widest h-16 rounded-2xl hover:-translate-y-1 active:translate-y-1 transition-all disabled:opacity-50 border-b-4 border-black/30 dark:border-white/30"
                     data-testid="btn-submit-answer"
                   >
-                    {submitAnswer.isPending ? "ANALYZING..." : "LOCK ANSWER"}
+                    {submitAnswer.isPending ? "CHECKING..." : "CHECK ANSWER"}
                   </Button>
                 )}
               </div>
@@ -440,10 +440,10 @@ function ResultReport({
   const summaryText = useMemo(() => {
     if (!result) return "";
     const parts = [
-      `Your reading level is ${result.diagnosedGradeLevel}, on the ${result.placementPathway} pathway.`,
+      `You read at a ${result.diagnosedGradeLevel} level.`,
     ];
-    if (strengths.length) parts.push(`Your strengths include ${strengths.join(", ")}.`);
-    if (gaps.length) parts.push(`Areas to focus on: ${gaps.join(", ")}.`);
+    if (strengths.length) parts.push(`You are great at ${strengths.join(", ")}.`);
+    if (gaps.length) parts.push(`Let's practice ${gaps.join(", ")}.`);
     return parts.join(" ");
   }, [result, strengths, gaps]);
 
@@ -461,29 +461,29 @@ function ResultReport({
           <CheckCircle className="w-10 h-10 text-white" />
         </motion.div>
         <div className="flex items-center justify-center gap-3">
-          <h2 className="text-3xl md:text-5xl font-heading font-black uppercase text-foreground tracking-tight">Calibration Complete</h2>
+          <h2 className="text-3xl md:text-5xl font-heading font-black uppercase text-foreground tracking-tight">You Did It!</h2>
           {audioEnabled && summaryText && (
             <div className="bg-muted rounded-xl p-1 shrink-0">
               <TTSButton text={summaryText} size="md" />
             </div>
           )}
         </div>
-        <p className="text-base text-muted-foreground font-bold uppercase tracking-widest mt-3">Neural Link Established</p>
+        <p className="text-base text-muted-foreground font-bold uppercase tracking-widest mt-3">Great Work!</p>
       </div>
 
       {result && (
         <div className="relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="bg-card border-2 border-primary/30 rounded-2xl p-5 text-center shadow-sm">
-              <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Assessed Level</p>
+              <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Your Level</p>
               <p className="text-3xl md:text-4xl font-heading font-black text-foreground">{result.diagnosedGradeLevel}</p>
             </div>
             <div className="bg-card border-2 border-purple-500/30 rounded-2xl p-5 text-center shadow-sm">
-              <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest mb-1">Assigned Pathway</p>
+              <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest mb-1">Your Path</p>
               <p className="text-xl md:text-2xl font-heading font-black text-foreground uppercase mt-2">{result.placementPathway}</p>
             </div>
             <div className="bg-card border-2 border-green-500/30 rounded-2xl p-5 text-center shadow-sm">
-              <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">Scan Accuracy</p>
+              <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">You Got Right</p>
               <p className="text-3xl md:text-4xl font-heading font-black text-foreground">{Math.round(result.accuracyPct ?? 0)}%</p>
             </div>
           </div>
@@ -492,7 +492,7 @@ function ResultReport({
             {breakdown.length > 0 && (
               <div>
                 <h3 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <Target className="w-4 h-4 text-primary" /> Sector Analysis
+                  <Target className="w-4 h-4 text-primary" /> How You Did
                 </h3>
                 <div className="space-y-4 bg-card border-2 border-border rounded-2xl p-5">
                   {breakdown.map((d, i) => {
@@ -524,11 +524,11 @@ function ResultReport({
 
             <div className="flex flex-col gap-4">
                <h3 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-0 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-primary" /> Diagnostics
+                  <Activity className="w-4 h-4 text-primary" /> About You
                </h3>
                <div className="flex-1 rounded-2xl border-2 border-green-500/20 bg-green-500/5 p-5">
                   <h4 className="text-[10px] font-black text-green-600 dark:text-green-400 uppercase tracking-widest flex items-center gap-1.5 mb-3">
-                    <TrendingUp className="w-3.5 h-3.5" /> Core Strengths
+                    <TrendingUp className="w-3.5 h-3.5" /> You Are Great At
                   </h4>
                   {strengths.length ? (
                     <ul className="space-y-2">
@@ -540,12 +540,12 @@ function ResultReport({
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs font-medium text-muted-foreground">Gathering sufficient data points.</p>
+                    <p className="text-xs font-medium text-muted-foreground">We need a little more info.</p>
                   )}
                 </div>
                 <div className="flex-1 rounded-2xl border-2 border-amber-500/20 bg-amber-500/5 p-5">
                   <h4 className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1.5 mb-3">
-                    <Target className="w-3.5 h-3.5" /> Primary Targets
+                    <Target className="w-3.5 h-3.5" /> Let's Practice
                   </h4>
                   {gaps.length ? (
                     <ul className="space-y-2">
@@ -557,7 +557,7 @@ function ResultReport({
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs font-medium text-muted-foreground">No critical vulnerabilities detected.</p>
+                    <p className="text-xs font-medium text-muted-foreground">You did great everywhere!</p>
                   )}
                 </div>
             </div>
@@ -573,9 +573,9 @@ function ResultReport({
               </div>
               <p className="text-sm font-medium text-white/90 leading-relaxed">
                 <strong className="font-black text-white uppercase tracking-wide block mb-1">
-                  Personalized Mission Path Generated
+                  Your Reading Plan Is Ready!
                 </strong>
-                Mapped <span className="font-black bg-white/20 px-2 py-0.5 rounded text-white">{result!.skillsMapped}</span> discrete objectives across all sectors based on diagnostic data.
+                We picked <span className="font-black bg-white/20 px-2 py-0.5 rounded text-white">{result!.skillsMapped}</span> fun skills just for you to practice.
               </p>
             </motion.div>
           )}
@@ -588,7 +588,7 @@ function ResultReport({
         className="w-full game-gradient text-white font-black text-xl uppercase tracking-widest h-16 rounded-2xl bouncy-hover shadow-[0_8px_0_rgba(0,0,0,0.2)] hover:translate-y-1 active:translate-y-2 active:shadow-none border-b-[6px] border-black/20 z-10 relative"
         data-testid="btn-go-to-dashboard"
       >
-        ENTER HUB
+        START LEARNING
       </Button>
     </div>
   );
