@@ -337,6 +337,63 @@ Return exactly this JSON shape:
   };
 }
 
+// Map a model-provided correct-answer value to a real option id. Handles case
+// differences, "Option A"/"A)"/"(a)"/"a." wrappers, and answers returned as the
+// option text instead of its id. Returns null if it cannot be resolved.
+function resolveCorrectOptionId(
+  raw: string,
+  options: Array<{ id: string; text: string }>,
+): string | null {
+  if (!raw) return null;
+  const cleaned = raw.trim();
+  const lower = cleaned.toLowerCase();
+  let hit = options.find((o) => o.id === cleaned);
+  if (hit) return hit.id;
+  hit = options.find((o) => o.id.toLowerCase() === lower);
+  if (hit) return hit.id;
+  const letter = lower.replace(/^option\s*/, "").replace(/[^a-z0-9]/g, "");
+  hit = options.find((o) => o.id.toLowerCase() === letter);
+  if (hit) return hit.id;
+  hit = options.find((o) => o.text.trim().toLowerCase() === lower);
+  if (hit) return hit.id;
+  return null;
+}
+
+// Independently re-solve a question at temperature 0 so the answer key comes
+// from a dedicated solver rather than the creative generator. Returns a valid
+// option id, or null if it fails.
+async function verifyCorrectOptionId(
+  q: AdaptiveQuestion,
+): Promise<string | null> {
+  try {
+    const optionsText = q.options.map((o) => `${o.id}) ${o.text}`).join("\n");
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a meticulous ELA answer-key checker. Read the passage and question, then choose the single best option. Respond with JSON only.",
+        },
+        {
+          role: "user",
+          content: `${q.passage ? `Passage:\n${q.passage}\n\n` : ""}Question: ${q.questionText}\n\nOptions:\n${optionsText}\n\nReturn exactly: {"correctOptionId": "<id>"} using one of the option ids listed above.`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 50,
+      temperature: 0,
+    });
+    const raw = completion.choices[0].message.content ?? "{}";
+    const obj = JSON.parse(raw) as { correctOptionId?: string };
+    return obj.correctOptionId
+      ? resolveCorrectOptionId(obj.correctOptionId, q.options)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateQuestion(params: GenerateParams): Promise<AdaptiveQuestion> {
   const cached = await getCached(params);
   if (cached) return cached;
@@ -355,7 +412,7 @@ export async function generateQuestion(params: GenerateParams): Promise<Adaptive
       ],
       response_format: { type: "json_object" },
       max_tokens: 800,
-      temperature: 0.8,
+      temperature: 0.4,
     });
 
     const raw = completion.choices[0].message.content ?? "{}";
@@ -369,6 +426,25 @@ export async function generateQuestion(params: GenerateParams): Promise<Adaptive
       const wordCount = parsed.data.passage?.trim().split(/\s+/).length ?? 0;
       if (wordCount < 50) {
         return getFallbackQuestion(params);
+      }
+    }
+
+    // Ensure the generator's answer key actually points at a real option;
+    // discard the question if it can't be resolved (otherwise grading is wrong).
+    const resolved = resolveCorrectOptionId(
+      parsed.data.correctOptionId,
+      parsed.data.options,
+    );
+    if (!resolved) {
+      return getFallbackQuestion(params);
+    }
+    parsed.data.correctOptionId = resolved;
+
+    // Placement is high-stakes: independently re-solve and trust that answer key.
+    if (params.mode === "placement") {
+      const verified = await verifyCorrectOptionId(parsed.data);
+      if (verified) {
+        parsed.data.correctOptionId = verified;
       }
     }
 

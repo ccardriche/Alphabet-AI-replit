@@ -1,14 +1,8 @@
-import * as oidc from "openid-client";
 import { type Request, type Response, type NextFunction } from "express";
+import { getAuth, clerkClient } from "@clerk/express";
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import type { AuthUser } from "@workspace/api-zod";
-import {
-  clearSession,
-  getOidcConfig,
-  getSessionId,
-  getSession,
-  updateSession,
-  type SessionData,
-} from "../lib/auth";
 
 declare global {
   namespace Express {
@@ -25,62 +19,75 @@ declare global {
   }
 }
 
-async function refreshIfExpired(
-  sid: string,
-  session: SessionData,
-): Promise<SessionData | null> {
-  const now = Math.floor(Date.now() / 1000);
-  if (!session.expires_at || now <= session.expires_at) return session;
-
-  if (!session.refresh_token) return null;
-
-  try {
-    const config = await getOidcConfig();
-    const tokens = await oidc.refreshTokenGrant(
-      config,
-      session.refresh_token,
-    );
-    session.access_token = tokens.access_token;
-    session.refresh_token = tokens.refresh_token ?? session.refresh_token;
-    session.expires_at = tokens.expiresIn()
-      ? now + tokens.expiresIn()!
-      : session.expires_at;
-    await updateSession(sid, session);
-    return session;
-  } catch {
-    return null;
-  }
-}
-
+// Clerk-backed auth shim. Populates req.user from the app's own users table
+// (so downstream routes keep using req.user.id / req.user.role unchanged) and
+// provisions a users row on first sign-in from the Clerk profile.
 export async function authMiddleware(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction,
 ) {
   req.isAuthenticated = function (this: Request) {
     return this.user != null;
   } as Request["isAuthenticated"];
 
-  const sid = getSessionId(req);
-  if (!sid) {
+  const { userId } = getAuth(req);
+  if (!userId) {
     next();
     return;
   }
 
-  const session = await getSession(sid);
-  if (!session?.user?.id) {
-    await clearSession(res, sid);
-    next();
-    return;
+  try {
+    let [row] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+
+    if (!row) {
+      let email: string | null = null;
+      let firstName: string | null = null;
+      let lastName: string | null = null;
+      let profileImageUrl: string | null = null;
+      try {
+        const cu = await clerkClient.users.getUser(userId);
+        email =
+          cu.primaryEmailAddress?.emailAddress ??
+          cu.emailAddresses[0]?.emailAddress ??
+          null;
+        firstName = cu.firstName ?? null;
+        lastName = cu.lastName ?? null;
+        profileImageUrl = cu.imageUrl ?? null;
+      } catch {
+        // Clerk profile fetch is best-effort; proceed with id only.
+      }
+
+      const inserted = await db
+        .insert(usersTable)
+        .values({ id: userId, email, firstName, lastName, profileImageUrl })
+        .onConflictDoNothing()
+        .returning();
+      row = inserted[0];
+      if (!row) {
+        [row] = await db
+          .select()
+          .from(usersTable)
+          .where(eq(usersTable.id, userId));
+      }
+    }
+
+    if (row) {
+      req.user = {
+        id: row.id,
+        email: row.email ?? null,
+        firstName: row.firstName ?? null,
+        lastName: row.lastName ?? null,
+        profileImageUrl: row.profileImageUrl ?? null,
+        role: row.role,
+      };
+    }
+  } catch {
+    // On any failure, leave the request unauthenticated.
   }
 
-  const refreshed = await refreshIfExpired(sid, session);
-  if (!refreshed) {
-    await clearSession(res, sid);
-    next();
-    return;
-  }
-
-  req.user = refreshed.user;
   next();
 }

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useAuth as useClerkAuth, useUser, useClerk } from "@clerk/react";
 import type { AuthUser } from "@workspace/api-client-react";
 
 export type { AuthUser };
@@ -11,50 +12,41 @@ interface AuthState {
   logout: () => void;
 }
 
+// Backed by Clerk. Keeps the original hook interface so app pages
+// (App.tsx, Landing.tsx) stay unchanged after the auth provider swap.
 export function useAuth(): AuthState {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoaded, isSignedIn } = useClerkAuth();
+  const { user: clerkUser } = useUser();
+  const clerk = useClerk();
 
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch("/api/me", { credentials: "include" })
-      .then((res) => {
-        if (res.status === 401) return null;
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<AuthUser | null>;
-      })
-      .then((data) => {
-        if (!cancelled) {
-          setUser(data ?? null);
-          setIsLoading(false);
+  const user: AuthUser | null =
+    isSignedIn && clerkUser
+      ? {
+          id: clerkUser.id,
+          email: clerkUser.primaryEmailAddress?.emailAddress ?? null,
+          firstName: clerkUser.firstName ?? null,
+          lastName: clerkUser.lastName ?? null,
+          profileImageUrl: clerkUser.imageUrl ?? null,
+          role: "student",
         }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setUser(null);
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      : null;
 
   const login = useCallback(() => {
     const returnTo = window.location.pathname + window.location.search;
-    window.location.href = `/api/login?returnTo=${encodeURIComponent(returnTo)}`;
-  }, []);
+    clerk.redirectToSignIn({
+      signInForceRedirectUrl: returnTo,
+      signUpForceRedirectUrl: returnTo,
+    });
+  }, [clerk]);
 
   const logout = useCallback(() => {
-    window.location.href = "/api/logout";
-  }, []);
+    void clerk.signOut({ redirectUrl: "/" });
+  }, [clerk]);
 
   return {
     user,
-    isLoading,
-    isAuthenticated: !!user,
+    isLoading: !isLoaded,
+    isAuthenticated: !!isSignedIn,
     login,
     logout,
   };
