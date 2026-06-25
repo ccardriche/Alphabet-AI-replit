@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { GRADE_OPTIONS, INTEREST_OPTIONS, STUDENT_ID_KEY, DISPLAY_NAME_KEY } from "@/lib/constants";
+import { apiUrl } from "@/lib/api-url";
 import { useToast } from "@/hooks/use-toast";
 
 const schema = z.object({
@@ -59,7 +60,7 @@ export default function Onboarding() {
     setClassJoinStatus("joining");
     setClassJoinError("");
     try {
-      const res = await fetch("/api/teacher/classes/join", {
+      const res = await fetch(apiUrl("/api/teacher/classes/join"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ classCode: classCode.trim() }),
@@ -301,7 +302,7 @@ export default function Onboarding() {
                       onClick={async () => {
                         setClassJoinStatus("joining");
                         try {
-                          const res = await fetch("/api/teacher/classes/join", {
+                          const res = await fetch(apiUrl("/api/teacher/classes/join"), {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ classCode: classCode.trim() }),

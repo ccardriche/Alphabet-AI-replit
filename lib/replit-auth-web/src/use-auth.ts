@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { resolveApiUrl } from "@workspace/api-client-react";
 import type { AuthUser } from "@workspace/api-client-react";
 
 export type { AuthUser };
@@ -18,7 +19,7 @@ export function useAuth(): AuthState {
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/api/me", { credentials: "include" })
+    fetch(resolveApiUrl("/api/me"), { credentials: "include" })
       .then((res) => {
         if (res.status === 401) return null;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -44,11 +45,13 @@ export function useAuth(): AuthState {
 
   const login = useCallback(() => {
     const returnTo = window.location.pathname + window.location.search;
-    window.location.href = `/api/login?returnTo=${encodeURIComponent(returnTo)}`;
+    window.location.href = resolveApiUrl(
+      `/api/login?returnTo=${encodeURIComponent(returnTo)}`,
+    );
   }, []);
 
   const logout = useCallback(() => {
-    window.location.href = "/api/logout";
+    window.location.href = resolveApiUrl("/api/logout");
   }, []);
 
   return {

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useGetStudentProfile, getGetStudentProfileQueryKey, useGetCaregiverProfile, getGetCaregiverProfileQueryKey } from "@workspace/api-client-react";
 import { ROLE_KEY, STUDENT_ID_KEY, PLACEMENT_COMPLETED_KEY } from "@/lib/constants";
+import { apiUrl } from "@/lib/api-url";
 
 export default function Landing() {
   const { isAuthenticated, isLoading: authLoading, login } = useAuth();
@@ -75,10 +76,11 @@ export default function Landing() {
   async function handleRole(role: "student" | "teacher" | "caregiver") {
     sessionStorage.setItem(ROLE_KEY, role);
     try {
-      await fetch("/api/me", {
+      await fetch(apiUrl("/api/me"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role }),
+        credentials: "include",
       });
       if (role === "student") setLocation("/onboarding");
       else if (role === "teacher") setLocation("/teacher");

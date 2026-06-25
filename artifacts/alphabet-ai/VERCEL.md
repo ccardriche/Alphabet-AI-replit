@@ -35,20 +35,32 @@ The build no longer requires any Replit-specific env vars:
   `@replit/vite-plugin-cartographer`, `@replit/vite-plugin-dev-banner`) are only
   loaded when `REPL_ID` is present, so they are skipped entirely on Vercel.
 
-## Runtime environment variables
+## API connectivity
 
-The frontend currently consumes **no** `VITE_*` build-time environment variables.
-All backend calls are made to same-origin relative paths (`/api/...`), and auth is
-handled by redirecting the browser to `/api/login` and `/api/logout`.
+The frontend (generated client hooks **and** the hand-written `fetch("/api/...")`
+calls in `useAuth`, `use-tts`, `Landing`, `Onboarding`, and `BookUpload`) resolves
+every API request through a single base, controlled by one optional build-time var:
 
-There is therefore nothing to "fill in" for the build to succeed. However, for the
-deployed app to actually function, you must make the `/api/*` routes resolve to the
+| Variable       | Default          | Effect                                              |
+| -------------- | ---------------- | --------------------------------------------------- |
+| `VITE_API_URL` | _unset_ (empty)  | When set, every API call is prefixed with this absolute origin. When unset, calls stay same-origin relative (`/api/...`). |
+
+How it is wired:
+
+- `src/main.tsx` calls `setBaseUrl(import.meta.env.VITE_API_URL)` at startup when the
+  var is set, so the generated client hooks hit the remote host.
+- The hand-written fetches call `apiUrl(...)` (`src/lib/api-url.ts`), which delegates
+  to `resolveApiUrl()` from `@workspace/api-client-react` — the same base the
+  generated client uses. So both always agree.
+
+For the deployed app to actually function you must make `/api/*` resolve to the
 running API server. Choose one:
 
 ### Option A — Proxy `/api` from Vercel to the API host (recommended)
 
-Add a rewrite to `vercel.json` that forwards API calls to wherever the API server
-runs. Keep the SPA catch-all **after** the API rule (Vercel matches top-to-bottom):
+Leave `VITE_API_URL` **unset** and add a rewrite to `vercel.json` that forwards API
+calls to wherever the API server runs. Keep the SPA catch-all **after** the API rule
+(Vercel matches top-to-bottom):
 
 ```jsonc
 {
@@ -61,25 +73,22 @@ runs. Keep the SPA catch-all **after** the API rule (Vercel matches top-to-botto
 
 Replace `# FILL IN API HOST` with the deployed API origin (e.g. the Replit
 deployment domain). This keeps requests same-origin from the browser's perspective,
-so the existing relative `fetch("/api/...")` calls and cookie-based auth keep working.
+so the relative `fetch("/api/...")` calls and cookie-based Replit OIDC auth keep
+working with no server changes. **This is the recommended option** precisely because
+it sidesteps the cross-origin auth caveat below.
 
 ### Option B — Point the client at an absolute API base URL
 
-The generated API client exposes `setBaseUrl()` (from `@workspace/api-client-react`).
-You could call it at app startup with an env-provided value, e.g.:
-
-```ts
-// in src/main.tsx, before rendering
-import { setBaseUrl } from "@workspace/api-client-react";
-if (import.meta.env.VITE_API_URL) setBaseUrl(import.meta.env.VITE_API_URL);
-```
-
-…and set `VITE_API_URL = # FILL IN API HOST` in Vercel. Note this only affects the
-generated API hooks; the hand-written `fetch("/api/...")` calls in `useAuth`,
-`use-tts`, and a few pages would also need updating. This is a code change beyond
-the current static-build scope and is documented here only for completeness.
+Set `VITE_API_URL` in Vercel's Environment Variables to the API origin
+(e.g. `https://your-api-host`). No code changes are needed — the wiring described
+above prefixes every API call with that value at runtime, and `vercel.json` only
+needs the SPA catch-all rewrite.
 
 > ⚠️ Cross-origin auth caveat: Replit OIDC auth uses session cookies set by the API
-> server. If the API is on a different origin than the Vercel app, cookies and the
-> OIDC redirect flow must be configured for cross-site use (SameSite/None, CORS,
-> redirect allowlist). Option A avoids this by keeping everything same-origin.
+> server. With Option B the API is on a different origin than the Vercel app, so for
+> auth to work the **API server** must additionally be configured for cross-site use:
+> session cookies as `SameSite=None; Secure`, CORS allowing the Vercel origin with
+> credentials, and the OIDC `returnTo` redirect handling updated to send users back
+> to the frontend origin (the current server only accepts same-origin relative
+> `returnTo` paths). Until that server work is done, prefer **Option A**, which keeps
+> everything same-origin and needs none of it.
