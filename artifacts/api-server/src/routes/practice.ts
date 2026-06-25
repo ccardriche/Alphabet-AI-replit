@@ -155,7 +155,7 @@ router.get("/practice/session/:sessionId/activity", async (req, res) => {
     .select()
     .from(elaSkillsTable)
     .where(eq(elaSkillsTable.active, true))
-    .limit(200);
+    .limit(2000);
 
   // If the session targets a specific skill, pin to that skill
   if (session.focusSkillCode) {

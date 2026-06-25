@@ -15,8 +15,8 @@ router.get("/skills", async (req, res) => {
   if (active !== undefined) conditions.push(eq(elaSkillsTable.active, active !== "false"));
 
   const rows = conditions.length > 0
-    ? await db.select().from(elaSkillsTable).where(and(...conditions)).limit(200)
-    : await db.select().from(elaSkillsTable).limit(200);
+    ? await db.select().from(elaSkillsTable).where(and(...conditions)).limit(2000)
+    : await db.select().from(elaSkillsTable).limit(2000);
 
   return res.json(rows);
 });
@@ -27,7 +27,7 @@ router.get("/skills/tree", async (req, res) => {
   const conditions = [eq(elaSkillsTable.active, true)];
   if (gradeLevel) conditions.push(eq(elaSkillsTable.gradeLevel, gradeLevel));
 
-  const skills = await db.select().from(elaSkillsTable).where(and(...conditions)).limit(500);
+  const skills = await db.select().from(elaSkillsTable).where(and(...conditions)).limit(2000);
 
   const domains = ["RL", "RI", "RF", "W", "SL", "L"];
   const domainLabels: Record<string, string> = {

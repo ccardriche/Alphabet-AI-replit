@@ -99,7 +99,7 @@ router.get("/placement/:sessionId/question", async (req, res) => {
     .select()
     .from(elaSkillsTable)
     .where(eq(elaSkillsTable.active, true))
-    .limit(200);
+    .limit(2000);
 
   // Build candidate list for MFI selection
   const candidates: ItemCandidate[] = allSkills
