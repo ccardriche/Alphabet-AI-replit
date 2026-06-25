@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { questionCacheTable } from "@workspace/db/schema";
 import { and, eq, gt, sql } from "drizzle-orm";
 import fallbackQuestionsData from "../data/fallback-questions.json" with { type: "json" };
+import { logger } from "../lib/logger";
 
 const openai = new OpenAI({
   baseURL:
@@ -133,7 +134,10 @@ async function setCached(params: GenerateParams, question: AdaptiveQuestion): Pr
       activityType,
       payload: question as any,
     });
-  } catch {
+  } catch (err) {
+    // A swallowed failure here means the served question won't be retrievable by
+    // id at answer time, which surfaces as a 400 "Question not found in cache".
+    logger.warn({ err, questionId: question.id, skillCode }, "Failed to persist question to cache");
   }
 }
 
@@ -397,21 +401,30 @@ export async function generateQuestion(params: GenerateParams): Promise<Adaptive
     const parsed = AdaptiveQuestionSchema.safeParse(JSON.parse(raw));
 
     if (!parsed.success) {
-      return getFallbackQuestion(params);
+      return serveFallback(params);
     }
 
     if (params.mode === "placement") {
       const wordCount = parsed.data.passage?.trim().split(/\s+/).length ?? 0;
       if (wordCount < 50) {
-        return getFallbackQuestion(params);
+        return serveFallback(params);
       }
     }
 
     await setCached(params, parsed.data);
     return parsed.data;
   } catch {
-    return getFallbackQuestion(params);
+    return serveFallback(params);
   }
+}
+
+// Serve a fallback question AND persist it so it can be retrieved by id when the
+// answer is submitted. Fallback questions get a fresh id each time and are never
+// in the AI cache, so without this the answer endpoint can't evaluate them.
+async function serveFallback(params: GenerateParams): Promise<AdaptiveQuestion> {
+  const question = getFallbackQuestion(params);
+  await setCached(params, question);
+  return question;
 }
 
 export async function generateExerciseWorksheet(params: {
