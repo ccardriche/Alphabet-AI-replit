@@ -132,3 +132,7 @@ export const ROLE_KEY = "alphabet_ai_role";
 export const STUDENT_ID_KEY = "alphabet_ai_student_id";
 export const PLACEMENT_COMPLETED_KEY = "alphabet_ai_placement_done";
 export const DISPLAY_NAME_KEY = "alphabet_ai_display_name";
+// Session-scoped flag: once the landing page has auto-routed a signed-in user
+// (right after login), it stops bouncing so the home page stays reachable
+// (e.g. via the logo). Cleared on logout so the next login redirects again.
+export const HOME_REDIRECTED_KEY = "alphabet_ai_home_redirected";

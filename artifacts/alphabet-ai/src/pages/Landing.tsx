@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useGetStudentProfile, getGetStudentProfileQueryKey, useGetCaregiverProfile, getGetCaregiverProfileQueryKey } from "@workspace/api-client-react";
-import { ROLE_KEY, STUDENT_ID_KEY, PLACEMENT_COMPLETED_KEY } from "@/lib/constants";
+import { ROLE_KEY, STUDENT_ID_KEY, PLACEMENT_COMPLETED_KEY, HOME_REDIRECTED_KEY } from "@/lib/constants";
 import { apiUrl } from "@/lib/api-url";
 
 export default function Landing() {
@@ -54,12 +54,22 @@ export default function Landing() {
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
 
+    // Only auto-route once per session (right after login). After that, the
+    // home page stays reachable (e.g. via the logo) without bouncing the user
+    // straight back into the app.
+    if (sessionStorage.getItem(HOME_REDIRECTED_KEY)) return;
+
+    const go = (path: string) => {
+      sessionStorage.setItem(HOME_REDIRECTED_KEY, "1");
+      setLocation(path);
+    };
+
     // Fast-path: returning student already has a local student ID stored from
     // a previous session. Skip role-selection and route immediately.
     const storedStudentId = localStorage.getItem(STUDENT_ID_KEY);
     if (storedStudentId) {
       const placementDone = localStorage.getItem(PLACEMENT_COMPLETED_KEY);
-      setLocation(placementDone ? "/dashboard" : "/placement");
+      go(placementDone ? "/dashboard" : "/placement");
       return;
     }
 
@@ -67,27 +77,29 @@ export default function Landing() {
 
     if (profile) {
       if ((profile as any).preAssessmentCompleted) {
-        setLocation("/dashboard");
+        go("/dashboard");
       } else {
-        setLocation("/placement");
+        go("/placement");
       }
     } else if (profileError) {
       const role = sessionStorage.getItem(ROLE_KEY);
       if (role === "teacher") {
-        setLocation("/teacher");
+        go("/teacher");
       } else if (role === "student") {
-        setLocation("/onboarding");
+        go("/onboarding");
       } else if (role === "caregiver") {
-        setLocation("/caregiver");
+        go("/caregiver");
       }
       // No role yet → stay on landing to show role-selection UI
     }
   }, [authLoading, isAuthenticated, profileLoading, profile, profileError, setLocation]);
 
-  // Auto-redirect returning caregivers
+  // Auto-redirect returning caregivers (also only once per session)
   useEffect(() => {
     if (!isAuthenticated || profileLoading || caregiverLoading) return;
+    if (sessionStorage.getItem(HOME_REDIRECTED_KEY)) return;
     if (profileError && caregiverProfile) {
+      sessionStorage.setItem(HOME_REDIRECTED_KEY, "1");
       setLocation("/caregiver");
     }
   }, [isAuthenticated, profileLoading, caregiverLoading, profileError, caregiverProfile, setLocation]);
@@ -180,12 +192,19 @@ export default function Landing() {
       {/* ===== NAV ===== */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-background/70 border-b border-border/60">
         <nav className="max-w-6xl mx-auto px-5 md:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              sessionStorage.setItem(HOME_REDIRECTED_KEY, "1");
+              setLocation("/");
+            }}
+            className="flex items-center gap-3 bouncy-hover"
+            data-testid="btn-home-logo"
+          >
             <div className="w-10 h-10 rounded-2xl game-gradient flex items-center justify-center shadow-lg">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-heading font-black tracking-tight">Alphabet AI</span>
-          </div>
+          </button>
           {!authLoading && !isAuthenticated && (
             <div className="flex items-center gap-2 sm:gap-3">
               <Button

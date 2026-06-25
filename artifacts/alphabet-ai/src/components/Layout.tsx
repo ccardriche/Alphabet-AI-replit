@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { getRole, clearRole } from "@/lib/role";
+import { HOME_REDIRECTED_KEY } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import {
   LayoutDashboard, GitBranch, Zap, TrendingUp, Timer,
@@ -67,6 +68,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   function handleLogout() {
     clearRole();
+    // Allow the next login to auto-route again from the home page.
+    sessionStorage.removeItem(HOME_REDIRECTED_KEY);
+    setLocation("/");
+  }
+
+  // Clicking the logo is explicit "take me home" intent: mark the session as
+  // already-redirected so the landing page shows instead of bouncing back in.
+  function goHome() {
+    sessionStorage.setItem(HOME_REDIRECTED_KEY, "1");
     setLocation("/");
   }
 
@@ -75,7 +85,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="hidden md:flex w-64 flex-col border-r border-sidebar-border bg-sidebar shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.2)] z-10">
         <div className="p-6">
-          <div className="flex items-center gap-3">
+          <button
+            onClick={goHome}
+            className="flex items-center gap-3 text-left bouncy-hover"
+            data-testid="btn-home-logo"
+            title="Go to home page"
+          >
             <div className="w-10 h-10 rounded-xl game-gradient flex items-center justify-center shadow-lg">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
@@ -83,7 +98,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <span className="font-heading font-extrabold text-sidebar-foreground text-lg tracking-tight">Alphabet AI</span>
               <p className="text-xs text-sidebar-foreground/60 font-bold uppercase tracking-wider">{roleLabel} HUB</p>
             </div>
-          </div>
+          </button>
         </div>
 
         <nav className="flex-1 px-3 pb-4 space-y-2 overflow-y-auto">
@@ -154,12 +169,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Mobile top bar */}
         <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-sidebar text-sidebar-foreground z-10 shadow-md">
-          <div className="flex items-center gap-2">
+          <button
+            onClick={goHome}
+            className="flex items-center gap-2 bouncy-hover"
+            data-testid="btn-home-logo-mobile"
+            aria-label="Go to home page"
+          >
             <div className="w-8 h-8 rounded-lg game-gradient flex items-center justify-center">
               <GraduationCap className="w-4 h-4 text-white" />
             </div>
             <span className="font-heading font-extrabold text-lg tracking-tight">Alphabet AI</span>
-          </div>
+          </button>
           <div className="flex items-center gap-3">
             {role === "student" && profile && (
               <button
