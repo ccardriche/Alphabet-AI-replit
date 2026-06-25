@@ -30,7 +30,8 @@ import {
   Shield,
   Activity,
   Zap,
-  Flame
+  Flame,
+  Home
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -187,21 +188,33 @@ export default function Placement() {
             </div>
           </div>
           
-          {phase === "question" && (
-            <div className="flex flex-col items-end gap-1.5">
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                SCAN PROGRESS {Math.min(questionCount + 1, TARGET_QUESTIONS)}/{TARGET_QUESTIONS}
-              </span>
-              <div className="w-32 h-2.5 rounded-full bg-muted overflow-hidden border border-border shadow-inner">
-                <motion.div 
-                  className="h-full bg-primary"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPct}%` }}
-                  transition={{ ease: "easeOut", duration: 0.5 }}
-                />
+          <div className="flex items-center gap-3">
+            {phase === "question" && (
+              <div className="flex flex-col items-end gap-1.5">
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  SCAN PROGRESS {Math.min(questionCount + 1, TARGET_QUESTIONS)}/{TARGET_QUESTIONS}
+                </span>
+                <div className="w-32 h-2.5 rounded-full bg-muted overflow-hidden border border-border shadow-inner">
+                  <motion.div 
+                    className="h-full bg-primary"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPct}%` }}
+                    transition={{ ease: "easeOut", duration: 0.5 }}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            <Button
+              variant="ghost"
+              onClick={() => setLocation("/dashboard")}
+              className="h-10 rounded-xl px-3 gap-2 font-black uppercase tracking-widest text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted border-2 border-transparent hover:border-border"
+              data-testid="btn-return-home"
+            >
+              <Home className="w-4 h-4" />
+              <span className="hidden sm:inline">Home</span>
+            </Button>
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
