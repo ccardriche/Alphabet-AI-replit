@@ -1986,6 +1986,9 @@ components:
           type: array
           items:
             type: string
+        skillsMapped:
+          type: integer
+          description: Number of skills mapped into the student's individual learning path from this placement.
 
     PlacementDomainScore:
       type: object

@@ -1,4 +1,5 @@
 import type { PlacementItemType } from "./questionGenerator";
+import { thetaToSmartScore, thetaToMasteryLevel } from "@workspace/irt-engine";
 
 export const DOMAIN_LABELS: Record<string, string> = {
   L: "Language",
@@ -79,6 +80,50 @@ export function summarizeStrands(breakdown: DomainScore[]): StrandSummary {
   return {
     strandStrengths: breakdown.filter((d) => d.level === "strength").map((d) => d.domain),
     strandGaps: breakdown.filter((d) => d.level === "gap").map((d) => d.domain),
+  };
+}
+
+/**
+ * Initial per-skill mastery estimate seeded from the placement result.
+ *
+ * The student's overall placement θ is the prior; we nudge it per-domain using
+ * how they actually performed on that strand during the assessment (a strong
+ * strand starts a little higher, a weak one a little lower). The result is a
+ * starting SmartScore + mastery level for every skill in their learning map.
+ *
+ * Mastery level is intentionally capped at "approaching" — placement gives a
+ * diagnostic starting point, but true mastery is *earned* through practice, so
+ * no skill is ever pre-marked "mastered" from the assessment alone.
+ */
+export interface SkillMasterySeed {
+  theta: number;
+  thetaSe: number;
+  smartScore: number;
+  masteryPercentage: number;
+  masteryLevel: string;
+}
+
+/** How strongly per-domain accuracy shifts a skill's seeded θ off the overall θ. */
+const DOMAIN_ADJ_SCALE = 1.5;
+/** Seeded θ uncertainty — high, so a few practice items quickly refine it. */
+const SEED_THETA_SE = 1.0;
+
+export function computeSkillSeed(
+  baseTheta: number,
+  domainAccuracyPct: number | null,
+): SkillMasterySeed {
+  const delta =
+    domainAccuracyPct == null ? 0 : (domainAccuracyPct / 100 - 0.5) * DOMAIN_ADJ_SCALE;
+  const theta = Math.max(-4, Math.min(4, baseTheta + delta));
+  const smartScore = thetaToSmartScore(theta);
+  let masteryLevel = thetaToMasteryLevel(theta);
+  if (masteryLevel === "mastered") masteryLevel = "approaching";
+  return {
+    theta,
+    thetaSe: SEED_THETA_SE,
+    smartScore,
+    masteryPercentage: smartScore,
+    masteryLevel,
   };
 }
 

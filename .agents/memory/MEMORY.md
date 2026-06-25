@@ -7,5 +7,6 @@
 - [Placement question variety](placement-question-variety.md) — placement rotates comprehension/vocabulary/fill_blank; the question cache key MUST include the item type or rotation collapses
 - [API server bundle runtime paths](api-server-bundle-runtime-paths.md) — api-server runs the esbuild dist bundle; statically import data files (JSON) instead of runtime require; OpenAI uses AI_INTEGRATIONS_* env vars
 - [Served-question answer cache](served-question-answer-cache.md) — placement/practice strip correctOptionId and re-fetch by id from question_cache on submit; EVERY served question (incl. fallbacks) must be persisted or answers 400
+- [Post-placement skill map](post-placement-skill-map.md) — placement completion seeds per-skill skill_mastery (capped at "approaching", idempotent); dashboard/skill-tree are empty without it
 - [Spec/server path contract](spec-server-path-contract.md) — server route paths MUST match openapi.yaml exactly; generated client hooks call spec paths, a mismatch yields silent 404s (e.g. placement/practice "trapped on placement" bug)
 - [Demo seed script](demo-seed.md) — scripts/seed-demo.ts: idempotent wipe+reseed of demo teacher/classes/students; skill_mastery.domain stores domain CODE not label

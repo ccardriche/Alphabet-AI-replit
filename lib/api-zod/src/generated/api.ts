@@ -673,7 +673,8 @@ export const GetPlacementResultResponse = zod.object({
   "accuracyPct": zod.number(),
   "level": zod.enum(['strength', 'on_track', 'gap', 'not_assessed'])
 })).optional(),
-  "recommendedNextSteps": zod.array(zod.string()).optional()
+  "recommendedNextSteps": zod.array(zod.string()).optional(),
+  "skillsMapped": zod.number().optional().describe('Number of skills mapped into the student\'s individual learning path from this placement.')
 })
 
 

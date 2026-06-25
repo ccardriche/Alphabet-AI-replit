@@ -18,4 +18,6 @@ export interface PlacementResult {
   strandGaps?: string[];
   domainBreakdown?: PlacementDomainScore[];
   recommendedNextSteps?: string[];
+  /** Number of skills mapped into the student's individual learning path from this placement. */
+  skillsMapped?: number;
 }

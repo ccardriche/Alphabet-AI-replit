@@ -488,6 +488,20 @@ function ResultReport({
         </>
       )}
 
+      {(result?.skillsMapped ?? 0) > 0 && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4">
+          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" />
+          <p className="text-sm text-gray-700">
+            <span className="font-semibold text-indigo-700">
+              Your personalized learning path is ready.
+            </span>{" "}
+            We mapped <span className="font-semibold">{result!.skillsMapped}</span> skills across your
+            reading strands, each with a starting level based on this assessment. Practice updates
+            them in real time.
+          </p>
+        </div>
+      )}
+
       <Button
         onClick={onContinue}
         className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
