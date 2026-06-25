@@ -63,3 +63,5 @@ _Populate as you build._
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+
+<!-- sync check 347d90f -->
