@@ -5,3 +5,4 @@
 - [Post-login routing](post-login-routing.md) — Landing.tsx fetches /api/me then /api/students/profile; no auto-redirect until role chosen; handleRole → PUT /api/me → /onboarding (student) or /teacher
 - [Generated file deduplication](generated-file-dedup.md) — api-zod and api-client-react had double-codegen duplicates; fix by slicing out the first partial copy
 - [Spec/server path contract](spec-server-path-contract.md) — server route paths MUST match openapi.yaml exactly; generated client hooks call spec paths, a mismatch yields silent 404s (e.g. placement/practice "trapped on placement" bug)
+- [Demo seed script](demo-seed.md) — scripts/seed-demo.ts: idempotent wipe+reseed of demo teacher/classes/students; skill_mastery.domain stores domain CODE not label
