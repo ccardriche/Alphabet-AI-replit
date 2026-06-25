@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -25,11 +25,14 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useGetStudentProfile, getGetStudentProfileQueryKey, useGetCaregiverProfile, getGetCaregiverProfileQueryKey } from "@workspace/api-client-react";
 import { ROLE_KEY, STUDENT_ID_KEY, PLACEMENT_COMPLETED_KEY, HOME_REDIRECTED_KEY } from "@/lib/constants";
+import { setRole } from "@/lib/role";
 import { apiUrl } from "@/lib/api-url";
+import { ShieldCheck } from "lucide-react";
 
 export default function Landing() {
   const { isAuthenticated, isLoading: authLoading, login } = useAuth();
   const [, setLocation] = useLocation();
+  const [adminError, setAdminError] = useState<string | null>(null);
 
   const {
     data: profile,
@@ -82,8 +85,10 @@ export default function Landing() {
         go("/placement");
       }
     } else if (profileError) {
-      const role = sessionStorage.getItem(ROLE_KEY);
-      if (role === "teacher") {
+      const role = sessionStorage.getItem(ROLE_KEY) ?? localStorage.getItem(ROLE_KEY);
+      if (role === "admin") {
+        go("/admin");
+      } else if (role === "teacher") {
         go("/teacher");
       } else if (role === "student") {
         go("/onboarding");
@@ -104,17 +109,27 @@ export default function Landing() {
     }
   }, [isAuthenticated, profileLoading, caregiverLoading, profileError, caregiverProfile, setLocation]);
 
-  async function handleRole(role: "student" | "teacher" | "caregiver") {
-    sessionStorage.setItem(ROLE_KEY, role);
+  async function handleRole(role: "student" | "teacher" | "caregiver" | "admin") {
     try {
-      await fetch(apiUrl("/api/me"), {
+      const res = await fetch(apiUrl("/api/me"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role }),
         credentials: "include",
       });
+      if (!res.ok) {
+        if (role === "admin" && res.status === 403) {
+          setAdminError("This account isn't on the administrator allowlist.");
+        } else {
+          console.error("Failed to set role:", res.status);
+        }
+        return;
+      }
+      sessionStorage.setItem(ROLE_KEY, role);
+      setRole(role);
       if (role === "student") setLocation("/onboarding");
       else if (role === "teacher") setLocation("/teacher");
+      else if (role === "admin") setLocation("/admin");
       else setLocation("/caregiver-onboarding");
     } catch (error) {
       console.error("Failed to set role:", error);
@@ -321,6 +336,17 @@ export default function Landing() {
                     </button>
                   ))}
                 </div>
+                <button
+                  onClick={() => handleRole("admin")}
+                  data-testid="btn-admin-login"
+                  className="mt-4 w-full flex items-center justify-center gap-2 bg-card border-2 border-dashed border-border rounded-2xl px-5 py-3 bouncy-hover text-muted-foreground hover:text-foreground"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span className="font-black uppercase tracking-widest text-xs">Administrator — preview all views</span>
+                </button>
+                {adminError && (
+                  <p data-testid="admin-error" className="mt-2 text-center text-xs font-bold text-red-500">{adminError}</p>
+                )}
               </div>
             )}
           </motion.div>

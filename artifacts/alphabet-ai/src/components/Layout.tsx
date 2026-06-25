@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { getRole, clearRole } from "@/lib/role";
+import { getRole, getActiveRole, clearRole } from "@/lib/role";
 import { HOME_REDIRECTED_KEY } from "@/lib/constants";
+import AdminViewBar from "@/components/AdminViewBar";
 import { useToast } from "@/hooks/use-toast";
 import {
   LayoutDashboard, GitBranch, Zap, TrendingUp, Timer,
@@ -37,7 +38,7 @@ const teacherNav = [
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const role = getRole();
+  const role = getActiveRole();
   const [location, setLocation] = useLocation();
   const nav = role === "teacher" ? teacherNav : studentNav;
   const queryClient = useQueryClient();
@@ -81,7 +82,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-[100dvh] bg-background">
+    <div className="flex flex-col h-[100dvh] bg-background">
+      <AdminViewBar />
+      <div className="flex flex-1 min-h-0">
       {/* Sidebar */}
       <aside className="hidden md:flex w-64 flex-col border-r border-sidebar-border bg-sidebar shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.2)] z-10">
         <div className="p-6">
@@ -231,6 +234,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+      </div>
       </div>
     </div>
   );

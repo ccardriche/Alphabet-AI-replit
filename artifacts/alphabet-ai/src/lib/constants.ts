@@ -136,3 +136,7 @@ export const DISPLAY_NAME_KEY = "alphabet_ai_display_name";
 // (right after login), it stops bouncing so the home page stays reachable
 // (e.g. via the logo). Cleared on logout so the next login redirects again.
 export const HOME_REDIRECTED_KEY = "alphabet_ai_home_redirected";
+// Session-scoped: when an admin is previewing one of the three role views
+// (student / teacher / caregiver), this holds which view they're currently in.
+// Cleared when the admin exits back to the admin portal or logs out.
+export const VIEW_AS_KEY = "alphabet_ai_view_as";

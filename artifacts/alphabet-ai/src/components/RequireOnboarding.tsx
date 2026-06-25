@@ -2,9 +2,13 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useGetStudentProfile, getGetStudentProfileQueryKey } from "@workspace/api-client-react";
 import { STUDENT_ID_KEY, PLACEMENT_COMPLETED_KEY } from "@/lib/constants";
+import { getRole } from "@/lib/role";
 
 export default function RequireOnboarding({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
+  // Admins previewing the student view have no student profile — skip the
+  // onboarding/placement gate so they can see the dashboard shell.
+  const isAdmin = getRole() === "admin";
 
   const { data: profile, isLoading } = useGetStudentProfile({
     query: {
@@ -19,7 +23,7 @@ export default function RequireOnboarding({ children }: { children: React.ReactN
   const isComplete = !!profile && (!!(profile as any).preAssessmentCompleted || placementLocalFlag);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isAdmin) return;
     if (isComplete) {
       if (!localStorage.getItem(STUDENT_ID_KEY)) {
         localStorage.setItem(STUDENT_ID_KEY, (profile as any).id);
@@ -39,6 +43,7 @@ export default function RequireOnboarding({ children }: { children: React.ReactN
     );
   }
 
+  if (isAdmin) return <>{children}</>;
   if (!isComplete) return null;
 
   return <>{children}</>;
