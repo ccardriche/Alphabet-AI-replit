@@ -1,0 +1,77 @@
+I need to prepare BOTH apps in this monorepo for a funder demo on Vercel.
+
+Apps:
+1. Alphabet AI frontend: artifacts/alphabet-ai
+2. Numbers AI frontend: artifacts/numbers-ai
+
+Goal:
+Our funder needs to be able to open live links and play with each app without running code, seeing Replit errors, or needing developer setup.
+
+Please prepare both apps for Vercel deployment and demo readiness without rewriting the apps or changing core functionality.
+
+Tasks:
+
+1. Inspect both apps:
+   - artifacts/alphabet-ai/package.json
+   - artifacts/alphabet-ai/vite.config.ts
+   - artifacts/numbers-ai/package.json
+   - artifacts/numbers-ai/vite.config.ts
+
+2. Fix Vite config for both apps:
+   - PORT should default to 5173 if missing.
+   - BASE_PATH should default to / if missing.
+   - Do not throw an error during production build if PORT is missing.
+   - Keep Replit compatibility.
+
+3. Confirm both apps build:
+   - cd artifacts/alphabet-ai && pnpm run build
+   - cd artifacts/numbers-ai && pnpm run build
+
+4. Identify all required environment variables:
+   - API URLs
+   - auth variables
+   - database variables
+   - Replit-specific variables
+   - Supabase or backend variables
+   Do not invent fake values. List only what the code actually requires.
+
+5. Add or update a DEPLOYMENT.md file at the repo root with separate Vercel instructions for both apps.
+
+Vercel Project 1: Alphabet AI
+- Root Directory: artifacts/alphabet-ai
+- Framework Preset: Vite
+- Install Command: pnpm install
+- Build Command: pnpm run build
+- Output Directory: dist/public
+- Environment Variables:
+  BASE_PATH=/
+
+Vercel Project 2: Numbers AI
+- Root Directory: artifacts/numbers-ai
+- Framework Preset: Vite
+- Install Command: pnpm install
+- Build Command: pnpm run build
+- Output Directory: dist/public
+- Environment Variables:
+  BASE_PATH=/
+
+6. Add a DEMO_NOTES.md file that explains:
+   - What Alphabet AI does
+   - What Numbers AI does
+   - What funders should click first
+   - What parts are still prototype/MVP
+   - Any known limitations
+   - A suggested 10-minute demo flow
+
+7. Add a simple demo-safe fallback where possible:
+   - If backend/API data is unavailable, show a friendly empty state instead of crashing.
+   - If auth is not fully configured, clearly identify whether the app needs demo login credentials or should support public demo mode.
+
+8. Do not remove the monorepo structure.
+9. Do not change branding, UI, routes, or business logic unless needed to prevent demo-breaking errors.
+10. After changes, summarize:
+   - Files changed
+   - Commands tested
+   - Whether both builds passed
+   - What I need to put into Vercel
+   - What still needs human setup
