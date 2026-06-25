@@ -184,6 +184,8 @@ router.get("/practice/session/:sessionId/activity", async (req, res) => {
         mode: "practice",
         studentTheta: skillTheta,
       });
+      // Strip correctOptionId — never sent to client; server evaluates correctness on submit
+      const { correctOptionId: _coid, ...questionSafe } = question;
       return res.json({
         sessionId,
         skillCode: pinned.skillCode,
@@ -191,7 +193,7 @@ router.get("/practice/session/:sessionId/activity", async (req, res) => {
         domain: pinned.domain,
         domainCode: pinned.domainCode,
         activityType,
-        question,
+        question: questionSafe,
         irt: { a: selected.a, b: selected.b, c: selected.c },
         currentSkillTheta: skillTheta,
         currentSkillSe: skillSe,
@@ -251,6 +253,8 @@ router.get("/practice/session/:sessionId/activity", async (req, res) => {
     studentTheta: skillTheta,
   });
 
+  // Strip correctOptionId — never sent to client; server evaluates correctness on submit
+  const { correctOptionId: _coid, ...questionSafe } = question;
   return res.json({
     sessionId,
     skillCode: targetSkill.skillCode,
@@ -258,7 +262,7 @@ router.get("/practice/session/:sessionId/activity", async (req, res) => {
     domain: targetSkill.domain,
     domainCode: targetSkill.domainCode,
     activityType,
-    question,
+    question: questionSafe,
     irt: { a: selected.a, b: selected.b, c: selected.c },
     currentSkillTheta: skillTheta,
     currentSkillSe: skillSe,
@@ -270,7 +274,7 @@ router.get("/practice/session/:sessionId/activity", async (req, res) => {
 router.post("/practice/session/:sessionId/submit", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
-  const { questionId, selectedOptionId, correct, skillCode, timeSpentSeconds, irt } = req.body;
+  const { questionId, selectedOptionId, skillCode, timeSpentSeconds, irt } = req.body;
 
   const [session] = await db
     .select()
@@ -285,6 +289,13 @@ router.post("/practice/session/:sessionId/submit", async (req, res) => {
     .where(eq(studentProfilesTable.userId, req.user!.id))
     .limit(1))[0];
   if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
+
+  // Evaluate correctness server-side — never trust client-submitted correct field
+  const cachedQ = await getQuestionFromCache(questionId);
+  if (!cachedQ) {
+    return res.status(400).json({ error: "Question not found in cache; cannot evaluate answer." });
+  }
+  const correct = selectedOptionId === cachedQ.correctOptionId;
 
   const a: number = irt?.a ?? 1.0;
   const b: number = irt?.b ?? 0;
@@ -390,36 +401,19 @@ router.post("/practice/session/:sessionId/submit", async (req, res) => {
 
   const newBadges = await checkAndAwardBadges(session.studentId);
 
-  // Look up the question from cache to build an authoritative explanation server-side
+  // Build explanation using cachedQ already fetched above — no second DB lookup needed
   let responseExplanation: string | null = null;
   let responseCorrectAnswerText: string | null = null;
   try {
-    const cachedQuestion = await getQuestionFromCache(questionId);
-    if (cachedQuestion) {
-      responseCorrectAnswerText = cachedQuestion.options.find(
-        (o) => o.id === cachedQuestion.correctOptionId,
-      )?.text ?? null;
-      if (!correct && responseCorrectAnswerText) {
-        // For incorrect answers, prepend an explicit hint naming the correct answer so students
-        // get immediate, actionable guidance before the full rationale
-        responseExplanation = `Hint: The correct answer is "${responseCorrectAnswerText}". ${cachedQuestion.explanation}`;
-      } else {
-        responseExplanation = cachedQuestion.explanation;
-      }
+    responseCorrectAnswerText = cachedQ.options.find(
+      (o) => o.id === cachedQ.correctOptionId,
+    )?.text ?? null;
+    if (!correct && responseCorrectAnswerText) {
+      // For incorrect answers, prepend an explicit hint naming the correct answer so students
+      // get immediate, actionable guidance before the full rationale
+      responseExplanation = `Hint: The correct answer is "${responseCorrectAnswerText}". ${cachedQ.explanation}`;
     } else {
-      // Fallback/mock questions aren't in the DB cache — generate a brief explanation via GPT
-      // using the skill name and correctness context we do have authoritatively
-      const skillInfo = await db
-        .select({ skillName: elaSkillsTable.skillName })
-        .from(elaSkillsTable)
-        .where(eq(elaSkillsTable.skillCode, skillCode))
-        .limit(1);
-      const skillName = skillInfo[0]?.skillName ?? skillCode;
-      responseExplanation = await generateFallbackExplanation({
-        correct,
-        skillName,
-      });
-      // correctAnswerText stays null for cache-miss questions — the frontend handles the absent panel gracefully
+      responseExplanation = cachedQ.explanation;
     }
   } catch {
     // Non-fatal — explanation is best-effort
@@ -429,6 +423,7 @@ router.post("/practice/session/:sessionId/submit", async (req, res) => {
     ...updated,
     xpEarned,
     correct,
+    correctOptionId: cachedQ.correctOptionId,
     newSkillTheta: newTheta,
     newSkillSe: newSe,
     newSmartScore,

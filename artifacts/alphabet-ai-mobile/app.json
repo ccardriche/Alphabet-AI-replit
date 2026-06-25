@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Alphabet AI",
+    "slug": "alphabet-ai-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "alphabet-ai-mobile",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#4827EC"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.alphabetai.mobile"
+    },
+    "android": {
+      "package": "com.alphabetai.mobile"
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

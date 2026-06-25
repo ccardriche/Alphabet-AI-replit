@@ -4,8 +4,9 @@ import {
   placementSessionsTable,
   elaSkillsTable,
   studentProfilesTable,
+  questionCacheTable,
 } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql as drizzleSql } from "drizzle-orm";
 import {
   eapEstimate,
   selectNextItem,
@@ -15,12 +16,23 @@ import {
   type IrtResponse,
   type ItemCandidate,
 } from "@workspace/irt-engine";
-import { generateQuestion, getFallbackQuestion, makeMockQuestion } from "../services/questionGenerator";
+import { generateQuestion, getFallbackQuestion, makeMockQuestion, AdaptiveQuestionSchema } from "../services/questionGenerator";
 
 export type { AdaptiveQuestion } from "../services/questionGenerator";
 export { generateQuestion, getFallbackQuestion, makeMockQuestion };
 
 const router = Router();
+
+async function getQuestionFromCache(questionId: string) {
+  const rows = await db
+    .select()
+    .from(questionCacheTable)
+    .where(drizzleSql`${questionCacheTable.payload}->>'id' = ${questionId}`)
+    .limit(1);
+  if (rows.length === 0) return null;
+  const parsed = AdaptiveQuestionSchema.safeParse(rows[0].payload);
+  return parsed.success ? parsed.data : null;
+}
 
 function requireAuth(req: any, res: any): boolean {
   if (!req.isAuthenticated()) {
@@ -120,8 +132,10 @@ router.get("/placement/:sessionId/question", async (req, res) => {
     studentTheta: session.theta,
   });
 
+  // Strip correctOptionId — never sent to client; server evaluates correctness on submit
+  const { correctOptionId: _coid, ...questionSafe } = question;
   return res.json({
-    ...question,
+    ...questionSafe,
     irt: { a: targetCandidate.a, b: targetCandidate.b, c: targetCandidate.c },
     currentTheta: session.theta,
     currentSe: session.thetaSe,
@@ -133,7 +147,7 @@ router.get("/placement/:sessionId/question", async (req, res) => {
 router.post("/placement/:sessionId/answer", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const { sessionId } = req.params;
-  const { questionId, selectedOptionId, skillCode, correct, timeSpentSeconds, irt } = req.body;
+  const { questionId, selectedOptionId, skillCode, timeSpentSeconds, irt } = req.body;
 
   const [session] = await db
     .select()
@@ -148,6 +162,14 @@ router.post("/placement/:sessionId/answer", async (req, res) => {
     .where(eq(studentProfilesTable.userId, req.user!.id))
     .limit(1))[0];
   if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
+
+  // Evaluate correctness server-side — never trust client-submitted correct field
+  const cachedQ = await getQuestionFromCache(questionId);
+  if (!cachedQ) {
+    return res.status(400).json({ error: "Question not found in cache; cannot evaluate answer." });
+  }
+  const correct = selectedOptionId === cachedQ.correctOptionId;
+  const correctOptionId = cachedQ.correctOptionId;
 
   // Retrieve IRT parameters from client payload (returned by /next) or fall back to DB
   let a: number, b: number, c: number;
@@ -212,6 +234,8 @@ router.post("/placement/:sessionId/answer", async (req, res) => {
   return res.json({
     ...updated,
     complete,
+    correct,
+    correctOptionId,
     newTheta: theta,
     newSe: se,
   });
