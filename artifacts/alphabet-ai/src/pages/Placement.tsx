@@ -40,7 +40,11 @@ import TTSButton from "@/components/TTSButton";
 
 type Phase = "intro" | "question" | "result";
 
-const TARGET_QUESTIONS = 12;
+// Mirrors the CAT engine's hard cap (shouldStopPlacement): the adaptive test
+// runs 8–25 questions and ends early once the ability estimate is confident.
+// Keep this in sync with the engine cap so the counter/progress never freeze
+// before the server actually completes the session.
+const TARGET_QUESTIONS = 25;
 
 const ITEM_TYPE_META: Record<string, { label: string; icon: typeof BookOpen }> = {
   multiple_choice: { label: "READING", icon: BookOpen },
