@@ -8,6 +8,7 @@
 
 export interface PlacementAnswerResult {
   correct: boolean;
+  correctOptionId?: string;
   newTheta: number;
   thetaSe: number;
   complete: boolean;

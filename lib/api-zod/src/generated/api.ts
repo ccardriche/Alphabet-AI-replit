@@ -614,7 +614,7 @@ export const GetNextPlacementQuestionResponse = zod.object({
   "domain": zod.string().optional(),
   "questionText": zod.string(),
   "passage": zod.string().nullish(),
-  "activityType": zod.enum(['listen_repeat', 'see_tap', 'say_it', 'write_it', 'read_it', 'multiple_choice']),
+  "activityType": zod.enum(['listen_repeat', 'see_tap', 'say_it', 'write_it', 'read_it', 'multiple_choice', 'vocabulary', 'fill_blank']),
   "options": zod.array(zod.object({
   "id": zod.string(),
   "text": zod.string()
@@ -642,6 +642,7 @@ export const SubmitPlacementAnswerBody = zod.object({
 
 export const SubmitPlacementAnswerResponse = zod.object({
   "correct": zod.boolean(),
+  "correctOptionId": zod.string().optional(),
   "newTheta": zod.number(),
   "thetaSe": zod.number(),
   "complete": zod.boolean(),
@@ -663,7 +664,16 @@ export const GetPlacementResultResponse = zod.object({
   "thetaFinal": zod.number(),
   "accuracyPct": zod.number().optional(),
   "strandStrengths": zod.array(zod.string()).optional(),
-  "strandGaps": zod.array(zod.string()).optional()
+  "strandGaps": zod.array(zod.string()).optional(),
+  "domainBreakdown": zod.array(zod.object({
+  "domainCode": zod.string(),
+  "domain": zod.string(),
+  "questionsAnswered": zod.number(),
+  "correct": zod.number(),
+  "accuracyPct": zod.number(),
+  "level": zod.enum(['strength', 'on_track', 'gap', 'not_assessed'])
+})).optional(),
+  "recommendedNextSteps": zod.array(zod.string()).optional()
 })
 
 
@@ -692,7 +702,7 @@ export const GetNextActivityResponse = zod.object({
   "domain": zod.string().optional(),
   "questionText": zod.string(),
   "passage": zod.string().nullish(),
-  "activityType": zod.enum(['listen_repeat', 'see_tap', 'say_it', 'write_it', 'read_it', 'multiple_choice']),
+  "activityType": zod.enum(['listen_repeat', 'see_tap', 'say_it', 'write_it', 'read_it', 'multiple_choice', 'vocabulary', 'fill_blank']),
   "options": zod.array(zod.object({
   "id": zod.string(),
   "text": zod.string()
@@ -1190,7 +1200,7 @@ export const GenerateQuestionResponse = zod.object({
   "domain": zod.string().optional(),
   "questionText": zod.string(),
   "passage": zod.string().nullish(),
-  "activityType": zod.enum(['listen_repeat', 'see_tap', 'say_it', 'write_it', 'read_it', 'multiple_choice']),
+  "activityType": zod.enum(['listen_repeat', 'see_tap', 'say_it', 'write_it', 'read_it', 'multiple_choice', 'vocabulary', 'fill_blank']),
   "options": zod.array(zod.object({
   "id": zod.string(),
   "text": zod.string()
@@ -1218,7 +1228,7 @@ export const GenerateExerciseResponseItem = zod.object({
   "domain": zod.string().optional(),
   "questionText": zod.string(),
   "passage": zod.string().nullish(),
-  "activityType": zod.enum(['listen_repeat', 'see_tap', 'say_it', 'write_it', 'read_it', 'multiple_choice']),
+  "activityType": zod.enum(['listen_repeat', 'see_tap', 'say_it', 'write_it', 'read_it', 'multiple_choice', 'vocabulary', 'fill_blank']),
   "options": zod.array(zod.object({
   "id": zod.string(),
   "text": zod.string()

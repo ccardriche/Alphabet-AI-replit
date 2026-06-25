@@ -28,6 +28,8 @@ export const AdaptiveQuestionSchema = z.object({
 
 export type AdaptiveQuestion = z.infer<typeof AdaptiveQuestionSchema>;
 
+export type PlacementItemType = "comprehension" | "vocabulary" | "fill_blank";
+
 export interface GenerateParams {
   skillCode: string;
   skillName: string;
@@ -39,6 +41,7 @@ export interface GenerateParams {
   activityType: string;
   mode: "placement" | "practice";
   studentTheta?: number;
+  placementItemType?: PlacementItemType;
 }
 
 export interface WorksheetQuestion extends AdaptiveQuestion {
@@ -79,7 +82,10 @@ function cacheKey(params: GenerateParams) {
     skillCode: params.skillCode,
     thetaBand: band,
     culturalContextHash: ctxHash,
-    activityType: params.mode === "placement" ? "placement" : params.activityType,
+    activityType:
+      params.mode === "placement"
+        ? `placement_${params.placementItemType ?? "comprehension"}`
+        : params.activityType,
   };
 }
 
@@ -234,10 +240,15 @@ export function makeMockQuestion(params: GenerateParams): AdaptiveQuestion {
   };
 }
 
+function placementPassageWordRange(band: string): string {
+  return band === "foundation" ? "50–70" : band === "developing" ? "70–100" : band === "proficient" ? "90–120" : "110–150";
+}
+
 function buildPlacementPrompt(params: GenerateParams): { system: string; user: string } {
   const { skillCode, skillName, domain, gradeLevel, difficulty, interests, culturalContext, studentTheta } = params;
   const effectiveTheta = studentTheta ?? difficulty;
   const band = thetaBand(effectiveTheta);
+  const itemType: PlacementItemType = params.placementItemType ?? "comprehension";
 
   const difficultyGuidance: Record<string, string> = {
     foundation:
@@ -257,12 +268,34 @@ function buildPlacementPrompt(params: GenerateParams): { system: string; user: s
     ? `Reflect these cultural contexts authentically in the passage content: ${culturalContext.join(", ")}.`
     : "Use culturally inclusive, diverse representations.";
 
+  const wordRange = placementPassageWordRange(band);
+
+  const itemGuidance: Record<PlacementItemType, { activityType: string; task: string; requirements: string }> = {
+    comprehension: {
+      activityType: "multiple_choice",
+      task: "Generate a single passage-based reading-comprehension question. The question should require the student to identify the main idea, make an inference, or analyze a key detail from the passage.",
+      requirements: `- "passage" field MUST be present and contain ${wordRange} words\n- The question must depend on the passage (a student who did not read it should not be able to answer)`,
+    },
+    vocabulary: {
+      activityType: "vocabulary",
+      task: "Generate a vocabulary-in-context question. Embed one grade-appropriate target word inside the passage, then ask what that word means AS USED in the passage. Surround the word with context clues. Wrap the target word in **double asterisks** the first time it appears in the passage.",
+      requirements: `- "passage" field MUST be present and contain ${wordRange} words and include the target word in context\n- "questionText" must quote the target word, e.g. What does the word "____" most likely mean as used in the passage?\n- Distractors should include a plausible-but-wrong common meaning of the word`,
+    },
+    fill_blank: {
+      activityType: "fill_blank",
+      task: "Generate a fill-in-the-blank question. Provide a short passage for context, then a single sentence (placed in questionText) with exactly one missing word shown as ___. The 4 options are candidate words that could fill the blank.",
+      requirements: `- "passage" field MUST be present and contain ${wordRange} words of supporting context\n- "questionText" MUST contain exactly one blank shown as ___\n- Only one option correctly completes the sentence given grammar and meaning`,
+    },
+  };
+
+  const guide = itemGuidance[itemType];
+
   return {
     system: `You are an expert ELA assessment writer creating passage-based placement questions. Student grade: ${gradeLevel}. Skill: "${skillName}" (${domain}, code: ${skillCode}). Student theta: ${effectiveTheta.toFixed(2)} (difficulty band: ${band}). ${difficultyGuidance[band] ?? ""} ${interestHint} ${culturalHint} Every placement question MUST include a reading passage. Return only valid JSON.`,
-    user: `Generate a single multiple-choice placement question.
+    user: `${guide.task}
 
 REQUIRED:
-- "passage" field MUST be present and contain ${band === "foundation" ? "50–70" : band === "developing" ? "70–100" : band === "proficient" ? "90–120" : "110–150"} words
+${guide.requirements}
 - All 4 options must be plausible and specific — never use placeholder text like "Option A" or "Distractor"
 - The correct answer must NOT always be "a" — vary the position
 - The explanation must address why the correct option is right AND why each wrong option is incorrect
@@ -275,7 +308,7 @@ Return exactly this JSON shape (no extra keys):
   "domain": "${domain}",
   "passage": "...",
   "questionText": "...",
-  "activityType": "multiple_choice",
+  "activityType": "${guide.activityType}",
   "options": [
     {"id": "a", "text": "..."},
     {"id": "b", "text": "..."},

@@ -5,6 +5,7 @@
  * Alphabet AI - Adaptive K-12 ELA Mastery Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { PlacementDomainScore } from './placementDomainScore';
 import type { PlacementResultPlacementPathway } from './placementResultPlacementPathway';
 
 export interface PlacementResult {
@@ -15,4 +16,6 @@ export interface PlacementResult {
   accuracyPct?: number;
   strandStrengths?: string[];
   strandGaps?: string[];
+  domainBreakdown?: PlacementDomainScore[];
+  recommendedNextSteps?: string[];
 }

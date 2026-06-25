@@ -16,4 +16,6 @@ export const AdaptiveQuestionActivityType = {
   write_it: 'write_it',
   read_it: 'read_it',
   multiple_choice: 'multiple_choice',
+  vocabulary: 'vocabulary',
+  fill_blank: 'fill_blank',
 } as const;

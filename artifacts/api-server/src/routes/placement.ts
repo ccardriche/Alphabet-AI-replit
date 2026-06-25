@@ -17,6 +17,13 @@ import {
   type ItemCandidate,
 } from "@workspace/irt-engine";
 import { generateQuestion, getFallbackQuestion, makeMockQuestion, AdaptiveQuestionSchema } from "../services/questionGenerator";
+import {
+  computeDomainBreakdown,
+  summarizeStrands,
+  recommendNextSteps,
+  placementItemTypeForIndex,
+  type PlacementAnswerRecord,
+} from "../services/placementReport";
 
 export type { AdaptiveQuestion } from "../services/questionGenerator";
 export { generateQuestion, getFallbackQuestion, makeMockQuestion };
@@ -119,6 +126,8 @@ router.get("/placement/:sessionId/question", async (req, res) => {
   const targetSkill = allSkills.find((s) => s.skillCode === targetCandidate.skillCode)!;
   const student = await getStudentByUserId(req.user!.id);
 
+  const placementItemType = placementItemTypeForIndex(answers.length);
+
   const question = await generateQuestion({
     skillCode: targetSkill.skillCode,
     skillName: targetSkill.skillName,
@@ -130,6 +139,7 @@ router.get("/placement/:sessionId/question", async (req, res) => {
     activityType: "multiple_choice",
     mode: "placement",
     studentTheta: session.theta,
+    placementItemType,
   });
 
   // Strip correctOptionId — never sent to client; server evaluates correctness on submit
@@ -209,12 +219,16 @@ router.post("/placement/:sessionId/answer", async (req, res) => {
     const diagnosedGrade = thetaToGrade(theta);
     const pathway = thetaToPathway(theta);
     const correctCount = allAnswers.filter((a: any) => a.correct).length;
+    const breakdown = computeDomainBreakdown(allAnswers as PlacementAnswerRecord[]);
+    const { strandStrengths, strandGaps } = summarizeStrands(breakdown);
     updates = {
       ...updates,
       status: "completed",
       diagnosedGradeLevel: diagnosedGrade,
       placementPathway: pathway,
       accuracyPct: (correctCount / questionCount) * 100,
+      strandStrengths,
+      strandGaps,
       completedAt: new Date(),
     };
 
@@ -237,6 +251,7 @@ router.post("/placement/:sessionId/answer", async (req, res) => {
     correct,
     correctOptionId,
     newTheta: theta,
+    thetaSe: se,
     newSe: se,
   });
 });
@@ -258,7 +273,20 @@ router.get("/placement/:sessionId/result", async (req, res) => {
     .limit(1))[0];
   if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
-  return res.json(session);
+  const answers = (session.answers as any[]) ?? [];
+  const domainBreakdown = computeDomainBreakdown(answers as PlacementAnswerRecord[]);
+  const pathway = session.placementPathway ?? "developing";
+  const gradeLevel = session.diagnosedGradeLevel ?? "grade";
+  const recommendedNextSteps =
+    session.status === "completed" ? recommendNextSteps(domainBreakdown, pathway, gradeLevel) : [];
+
+  return res.json({
+    ...session,
+    sessionId: session.id,
+    thetaFinal: session.theta,
+    domainBreakdown,
+    recommendedNextSteps,
+  });
 });
 
 export default router;
