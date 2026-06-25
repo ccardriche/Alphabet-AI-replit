@@ -13,8 +13,14 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 const router = Router();
 
 const openai = new OpenAI({
-  baseURL: process.env.OPENAI_API_BASE_URL ?? "https://api.openai.com/v1",
-  apiKey: process.env.OPENAI_API_KEY ?? "sk-placeholder",
+  baseURL:
+    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ??
+    process.env.OPENAI_API_BASE_URL ??
+    "https://api.openai.com/v1",
+  apiKey:
+    process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
+    process.env.OPENAI_API_KEY ??
+    "sk-placeholder",
 });
 
 // POST /api/llm/parse-pdf — extract plain text from an uploaded PDF (or .txt)
@@ -377,8 +383,23 @@ router.put("/me", async (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
   const { role } = req.body;
-  if (!role || (role !== "student" && role !== "teacher")) {
-    return res.status(400).json({ error: "role must be 'student' or 'teacher'" });
+  const allowedRoles = ["student", "teacher", "caregiver", "admin"];
+  if (!role || !allowedRoles.includes(role)) {
+    return res.status(400).json({ error: "role must be one of: student, teacher, caregiver, admin" });
+  }
+
+  // The admin role can preview teacher/caregiver views (its middlewares allow
+  // admin through), so it must NOT be freely self-assignable. Only emails on
+  // the ADMIN_EMAILS allowlist may assume it.
+  if (role === "admin") {
+    const allowlist = (process.env.ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const email = req.user!.email?.toLowerCase() ?? null;
+    if (!email || !allowlist.includes(email)) {
+      return res.status(403).json({ error: "Forbidden: not authorized for admin role" });
+    }
   }
 
   const [updated] = await db

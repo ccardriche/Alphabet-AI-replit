@@ -4,7 +4,7 @@ export function requireTeacher(req: Request, res: Response, next: NextFunction) 
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  if (req.user.role !== "teacher") {
+  if (req.user.role !== "teacher" && req.user.role !== "admin") {
     return res.status(403).json({ error: "Forbidden: teacher role required" });
   }
   return next();

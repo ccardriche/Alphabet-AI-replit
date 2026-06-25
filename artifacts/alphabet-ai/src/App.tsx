@@ -30,6 +30,7 @@ const Fluency = lazy(() => import("@/pages/Fluency"));
 const TeacherProjects = lazy(() => import("@/pages/TeacherProjects"));
 const StudentProjects = lazy(() => import("@/pages/StudentProjects"));
 const StudentProgressDetail = lazy(() => import("@/pages/StudentProgressDetail"));
+const AdminPortal = lazy(() => import("@/pages/AdminPortal"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -212,6 +213,13 @@ function Router() {
           <AuthGuard>
             <ErrorBoundary>
               <StudentProgressDetail />
+            </ErrorBoundary>
+          </AuthGuard>
+        </Route>
+        <Route path="/admin">
+          <AuthGuard>
+            <ErrorBoundary>
+              <AdminPortal />
             </ErrorBoundary>
           </AuthGuard>
         </Route>

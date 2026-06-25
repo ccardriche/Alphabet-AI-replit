@@ -1,5 +1,6 @@
-import { useCallback } from "react";
-import { useAuth as useClerkAuth, useUser, useClerk } from "@clerk/react";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth as useClerkAuth, useClerk } from "@clerk/react";
+import { resolveApiUrl } from "@workspace/api-client-react";
 import type { AuthUser } from "@workspace/api-client-react";
 
 export type { AuthUser };
@@ -12,24 +13,43 @@ interface AuthState {
   logout: () => void;
 }
 
-// Backed by Clerk. Keeps the original hook interface so app pages
-// (App.tsx, Landing.tsx) stay unchanged after the auth provider swap.
+// Auth is backed by Clerk (session + login/logout), while the app user — and
+// crucially its role — comes from the server's /api/me (the Clerk session
+// cookie is sent same-origin and validated by clerkMiddleware). Keeps the
+// original hook interface so app pages stay unchanged.
 export function useAuth(): AuthState {
   const { isLoaded, isSignedIn } = useClerkAuth();
-  const { user: clerkUser } = useUser();
   const clerk = useClerk();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
-  const user: AuthUser | null =
-    isSignedIn && clerkUser
-      ? {
-          id: clerkUser.id,
-          email: clerkUser.primaryEmailAddress?.emailAddress ?? null,
-          firstName: clerkUser.firstName ?? null,
-          lastName: clerkUser.lastName ?? null,
-          profileImageUrl: clerkUser.imageUrl ?? null,
-          role: "student",
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setUser(null);
+      setProfileLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setProfileLoading(true);
+    fetch(resolveApiUrl("/api/me"), { credentials: "include" })
+      .then((res) => (res.status === 401 ? null : res.ok ? res.json() : null))
+      .then((data: AuthUser | null) => {
+        if (!cancelled) {
+          setUser(data ?? null);
+          setProfileLoading(false);
         }
-      : null;
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUser(null);
+          setProfileLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn]);
 
   const login = useCallback(() => {
     const returnTo = window.location.pathname + window.location.search;
@@ -45,7 +65,7 @@ export function useAuth(): AuthState {
 
   return {
     user,
-    isLoading: !isLoaded,
+    isLoading: !isLoaded || (isSignedIn && profileLoading),
     isAuthenticated: !!isSignedIn,
     login,
     logout,

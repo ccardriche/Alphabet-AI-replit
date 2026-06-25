@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { getRole, clearRole } from "@/lib/role";
+import { getRole, getActiveRole, clearRole } from "@/lib/role";
+import { HOME_REDIRECTED_KEY } from "@/lib/constants";
+import AdminViewBar from "@/components/AdminViewBar";
 import { useToast } from "@/hooks/use-toast";
 import {
   LayoutDashboard, GitBranch, Zap, TrendingUp, Timer,
@@ -36,7 +38,7 @@ const teacherNav = [
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const role = getRole();
+  const role = getActiveRole();
   const [location, setLocation] = useLocation();
   const nav = role === "teacher" ? teacherNav : studentNav;
   const queryClient = useQueryClient();
@@ -67,112 +69,142 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   function handleLogout() {
     clearRole();
+    // Allow the next login to auto-route again from the home page.
+    sessionStorage.removeItem(HOME_REDIRECTED_KEY);
+    setLocation("/");
+  }
+
+  // Clicking the logo is explicit "take me home" intent: mark the session as
+  // already-redirected so the landing page shows instead of bouncing back in.
+  function goHome() {
+    sessionStorage.setItem(HOME_REDIRECTED_KEY, "1");
     setLocation("/");
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex flex-col h-[100dvh] bg-background">
+      <AdminViewBar />
+      <div className="flex flex-1 min-h-0">
       {/* Sidebar */}
-      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-sidebar shrink-0">
+      <aside className="hidden md:flex w-64 flex-col border-r border-sidebar-border bg-sidebar shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.2)] z-10">
         <div className="p-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
-              <GraduationCap className="w-4 h-4 text-white" />
+          <button
+            onClick={goHome}
+            className="flex items-center gap-3 text-left bouncy-hover"
+            data-testid="btn-home-logo"
+            title="Go to home page"
+          >
+            <div className="w-10 h-10 rounded-xl game-gradient flex items-center justify-center shadow-lg">
+              <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <span className="font-bold text-sidebar-foreground text-sm">Alphabet AI</span>
-              <p className="text-xs text-muted-foreground capitalize">{roleLabel}</p>
+              <span className="font-heading font-extrabold text-sidebar-foreground text-lg tracking-tight">Alphabet AI</span>
+              <p className="text-xs text-sidebar-foreground/60 font-bold uppercase tracking-wider">{roleLabel} HUB</p>
             </div>
-          </div>
+          </button>
         </div>
 
-        <nav className="flex-1 px-3 pb-4 space-y-1">
-          {nav.map(({ href, label, icon: Icon }) => (
-            <button
-              key={href}
-              onClick={() => setLocation(href)}
-              data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
-                location === href || location.startsWith(href + "/")
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              {label}
-            </button>
-          ))}
+        <nav className="flex-1 px-3 pb-4 space-y-2 overflow-y-auto">
+          {nav.map(({ href, label, icon: Icon }) => {
+            const isActive = location === href || location.startsWith(href + "/");
+            return (
+              <button
+                key={href}
+                onClick={() => setLocation(href)}
+                data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all bouncy-hover",
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(139,92,246,0.5)] border border-primary-border translate-x-1"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border border-transparent"
+                )}
+              >
+                <Icon className={cn("w-5 h-5 shrink-0", isActive ? "animate-pulse text-white" : "")} />
+                {label}
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="p-3 border-t border-sidebar-border space-y-1">
+        <div className="p-4 border-t border-sidebar-border space-y-3 bg-sidebar-accent/10">
           {role === "student" && profile && (
             <button
               onClick={handleToggleAudio}
               disabled={togglingAudio}
               data-testid="btn-toggle-audio"
               className={cn(
-                "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all bouncy-hover",
+                audioEnabled 
+                  ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                  : "bg-sidebar-accent text-sidebar-foreground/70 border border-sidebar-border",
                 "disabled:opacity-50"
               )}
             >
               {audioEnabled ? (
-                <Volume2 className="w-4 h-4 shrink-0 text-indigo-500" />
+                <Volume2 className="w-4 h-4 shrink-0 text-indigo-400" />
               ) : (
-                <VolumeX className="w-4 h-4 shrink-0 text-muted-foreground" />
+                <VolumeX className="w-4 h-4 shrink-0" />
               )}
-              <span>{audioEnabled ? "Read Aloud: On" : "Read Aloud: Off"}</span>
+              <span>{audioEnabled ? "AUDIO ON" : "AUDIO OFF"}</span>
             </button>
           )}
 
           {/* User identity row */}
-          <div className="flex items-center gap-2 px-3 py-2">
-            <Avatar name={userLabel} size="sm" />
-            <span className="text-sm font-medium text-sidebar-foreground truncate">{userLabel}</span>
+          <div className="flex items-center gap-3 px-2 py-1">
+            <Avatar name={userLabel} size="sm" className="border-2 border-primary/50" />
+            <span className="text-sm font-bold text-sidebar-foreground truncate">{userLabel}</span>
           </div>
 
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+            className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-red-400 hover:bg-red-500/10 font-bold uppercase tracking-wider"
             onClick={handleLogout}
             data-testid="btn-logout"
           >
             <LogOut className="w-4 h-4" />
-            Sign Out
+            Log Out
           </Button>
         </div>
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Mobile top bar */}
-        <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-background">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
-              <GraduationCap className="w-3.5 h-3.5 text-white" />
+        <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-sidebar text-sidebar-foreground z-10 shadow-md">
+          <button
+            onClick={goHome}
+            className="flex items-center gap-2 bouncy-hover"
+            data-testid="btn-home-logo-mobile"
+            aria-label="Go to home page"
+          >
+            <div className="w-8 h-8 rounded-lg game-gradient flex items-center justify-center">
+              <GraduationCap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-sm">Alphabet AI</span>
-          </div>
-          <div className="flex items-center gap-2">
+            <span className="font-heading font-extrabold text-lg tracking-tight">Alphabet AI</span>
+          </button>
+          <div className="flex items-center gap-3">
             {role === "student" && profile && (
               <button
                 onClick={handleToggleAudio}
                 disabled={togglingAudio}
                 aria-label={audioEnabled ? "Disable read aloud" : "Enable read aloud"}
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                className={cn(
+                  "p-2 rounded-lg transition-colors border",
+                  audioEnabled 
+                    ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30"
+                    : "bg-sidebar-accent text-sidebar-foreground/70 border-sidebar-border"
+                )}
               >
                 {audioEnabled ? (
-                  <Volume2 className="w-4 h-4 text-indigo-500" />
+                  <Volume2 className="w-4 h-4" />
                 ) : (
                   <VolumeX className="w-4 h-4" />
                 )}
               </button>
             )}
-            <div className="flex items-center gap-1.5">
-              <Avatar name={userLabel} size="sm" />
-              <span className="text-sm font-medium truncate max-w-[100px]">{userLabel}</span>
+            <div className="flex items-center gap-2 bg-sidebar-accent/50 p-1.5 rounded-full border border-sidebar-border">
+              <Avatar name={userLabel} size="sm" className="w-6 h-6 border border-primary/50" />
             </div>
           </div>
         </header>
@@ -182,21 +214,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </main>
 
         {/* Mobile bottom nav */}
-        <nav className="md:hidden flex border-t border-border bg-background">
-          {nav.slice(0, 5).map(({ href, label, icon: Icon }) => (
-            <button
-              key={href}
-              onClick={() => setLocation(href)}
-              className={cn(
-                "flex-1 flex flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors",
-                location === href || location.startsWith(href + "/") ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              <Icon className="w-4 h-4" />
-              {label.split(" ")[0]}
-            </button>
-          ))}
+        <nav className="md:hidden flex border-t border-sidebar-border bg-sidebar pb-safe z-10">
+          {nav.slice(0, 5).map(({ href, label, icon: Icon }) => {
+            const isActive = location === href || location.startsWith(href + "/");
+            return (
+              <button
+                key={href}
+                onClick={() => setLocation(href)}
+                className={cn(
+                  "flex-1 flex flex-col items-center gap-1.5 py-3 text-[10px] font-extrabold uppercase tracking-wider transition-all",
+                  isActive 
+                    ? "text-primary shadow-[inset_0_4px_0_0_var(--color-primary)] bg-primary/10" 
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                )}
+              >
+                <Icon className={cn("w-5 h-5", isActive && "animate-pulse")} />
+                {label.split(" ")[0]}
+              </button>
+            );
+          })}
         </nav>
+      </div>
       </div>
     </div>
   );

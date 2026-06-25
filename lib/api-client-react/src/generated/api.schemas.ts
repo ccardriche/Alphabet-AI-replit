@@ -375,6 +375,8 @@ export const AdaptiveQuestionActivityType = {
   write_it: 'write_it',
   read_it: 'read_it',
   multiple_choice: 'multiple_choice',
+  vocabulary: 'vocabulary',
+  fill_blank: 'fill_blank',
 } as const;
 
 export interface QuestionOption {
@@ -408,6 +410,7 @@ export interface PlacementAnswer {
 
 export interface PlacementAnswerResult {
   correct: boolean;
+  correctOptionId?: string;
   newTheta: number;
   thetaSe: number;
   complete: boolean;
@@ -425,6 +428,25 @@ export const PlacementResultPlacementPathway = {
   advanced: 'advanced',
 } as const;
 
+export type PlacementDomainScoreLevel = typeof PlacementDomainScoreLevel[keyof typeof PlacementDomainScoreLevel];
+
+
+export const PlacementDomainScoreLevel = {
+  strength: 'strength',
+  on_track: 'on_track',
+  gap: 'gap',
+  not_assessed: 'not_assessed',
+} as const;
+
+export interface PlacementDomainScore {
+  domainCode: string;
+  domain: string;
+  questionsAnswered: number;
+  correct: number;
+  accuracyPct: number;
+  level: PlacementDomainScoreLevel;
+}
+
 export interface PlacementResult {
   sessionId: string;
   diagnosedGradeLevel: string;
@@ -433,6 +455,10 @@ export interface PlacementResult {
   accuracyPct?: number;
   strandStrengths?: string[];
   strandGaps?: string[];
+  domainBreakdown?: PlacementDomainScore[];
+  recommendedNextSteps?: string[];
+  /** Number of skills mapped into the student's individual learning path from this placement. */
+  skillsMapped?: number;
 }
 
 export interface PracticeSessionInput {

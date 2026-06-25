@@ -5,8 +5,10 @@ import {
   elaSkillsTable,
   studentProfilesTable,
   questionCacheTable,
+  skillMasteryTable,
 } from "@workspace/db/schema";
-import { eq, sql as drizzleSql } from "drizzle-orm";
+import { eq, and as drizzleAnd, sql as drizzleSql } from "drizzle-orm";
+import { logger } from "../lib/logger";
 import {
   eapEstimate,
   selectNextItem,
@@ -17,6 +19,15 @@ import {
   type ItemCandidate,
 } from "@workspace/irt-engine";
 import { generateQuestion, getFallbackQuestion, makeMockQuestion, AdaptiveQuestionSchema } from "../services/questionGenerator";
+import {
+  computeDomainBreakdown,
+  summarizeStrands,
+  recommendNextSteps,
+  computeSkillSeed,
+  placementItemTypeForIndex,
+  type PlacementAnswerRecord,
+  type DomainScore,
+} from "../services/placementReport";
 
 export type { AdaptiveQuestion } from "../services/questionGenerator";
 export { generateQuestion, getFallbackQuestion, makeMockQuestion };
@@ -49,6 +60,77 @@ async function getStudentByUserId(userId: string) {
     .where(eq(studentProfilesTable.userId, userId))
     .limit(1);
   return profile ?? null;
+}
+
+// Grades present in the ela_skills catalog, lowest → highest.
+const SEED_GRADE_ORDER = ["K", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
+
+/** Resolve a diagnosed grade to a grade that actually has skills (clamp 9th–12th → 8th). */
+function resolveSeedGrade(diagnosedGrade: string): string {
+  return SEED_GRADE_ORDER.includes(diagnosedGrade)
+    ? diagnosedGrade
+    : SEED_GRADE_ORDER[SEED_GRADE_ORDER.length - 1];
+}
+
+/**
+ * Build the student's individual skill map from their placement result.
+ *
+ * Seeds a skill_mastery row for every active skill at the diagnosed grade, each
+ * with a starting θ / SmartScore / mastery level derived from the overall
+ * placement θ and how the student performed on that strand. Idempotent: existing
+ * rows (e.g. from prior practice or a re-take) are preserved via ON CONFLICT DO
+ * NOTHING, so earned progress is never overwritten. Returns the number of newly
+ * mapped skills.
+ */
+async function seedSkillMasteryFromPlacement(
+  studentId: string,
+  baseTheta: number,
+  breakdown: DomainScore[],
+  diagnosedGrade: string,
+): Promise<number> {
+  const grade = resolveSeedGrade(diagnosedGrade);
+  const skills = await db
+    .select()
+    .from(elaSkillsTable)
+    .where(drizzleAnd(eq(elaSkillsTable.active, true), eq(elaSkillsTable.gradeLevel, grade)))
+    .limit(500);
+  if (skills.length === 0) return 0;
+
+  const accuracyByDomain = new Map(breakdown.map((d) => [d.domainCode, d.accuracyPct]));
+
+  const rows = skills.map((s) => {
+    const seed = computeSkillSeed(baseTheta, accuracyByDomain.get(s.domainCode) ?? null);
+    return {
+      studentId,
+      skillCode: s.skillCode,
+      skillName: s.skillName,
+      domain: s.domainCode,
+      masteryLevel: seed.masteryLevel,
+      masteryPercentage: seed.masteryPercentage,
+      smartScore: seed.smartScore,
+      theta: seed.theta,
+      thetaSe: seed.thetaSe,
+      sequenceOrder: s.subSkillOrder,
+      isUnlocked: true,
+    };
+  });
+
+  const inserted = await db
+    .insert(skillMasteryTable)
+    .values(rows)
+    .onConflictDoNothing({ target: [skillMasteryTable.studentId, skillMasteryTable.skillCode] })
+    .returning({ id: skillMasteryTable.id });
+
+  return inserted.length;
+}
+
+/** Count how many skills are mapped for a student (their full learning map size). */
+async function countMappedSkills(studentId: string): Promise<number> {
+  const [row] = await db
+    .select({ count: drizzleSql<number>`count(*)::int` })
+    .from(skillMasteryTable)
+    .where(eq(skillMasteryTable.studentId, studentId));
+  return row?.count ?? 0;
 }
 
 // POST /api/placement/start
@@ -119,6 +201,8 @@ router.get("/placement/:sessionId/question", async (req, res) => {
   const targetSkill = allSkills.find((s) => s.skillCode === targetCandidate.skillCode)!;
   const student = await getStudentByUserId(req.user!.id);
 
+  const placementItemType = placementItemTypeForIndex(answers.length);
+
   const question = await generateQuestion({
     skillCode: targetSkill.skillCode,
     skillName: targetSkill.skillName,
@@ -130,6 +214,7 @@ router.get("/placement/:sessionId/question", async (req, res) => {
     activityType: "multiple_choice",
     mode: "placement",
     studentTheta: session.theta,
+    placementItemType,
   });
 
   // Strip correctOptionId — never sent to client; server evaluates correctness on submit
@@ -204,17 +289,22 @@ router.post("/placement/:sessionId/answer", async (req, res) => {
     questionCount,
     answers: allAnswers,
   };
+  let skillsMapped = 0;
 
   if (complete) {
     const diagnosedGrade = thetaToGrade(theta);
     const pathway = thetaToPathway(theta);
     const correctCount = allAnswers.filter((a: any) => a.correct).length;
+    const breakdown = computeDomainBreakdown(allAnswers as PlacementAnswerRecord[]);
+    const { strandStrengths, strandGaps } = summarizeStrands(breakdown);
     updates = {
       ...updates,
       status: "completed",
       diagnosedGradeLevel: diagnosedGrade,
       placementPathway: pathway,
       accuracyPct: (correctCount / questionCount) * 100,
+      strandStrengths,
+      strandGaps,
       completedAt: new Date(),
     };
 
@@ -223,6 +313,20 @@ router.post("/placement/:sessionId/answer", async (req, res) => {
       diagnosedGradeLevel: diagnosedGrade,
       placementPathway: pathway,
     }).where(eq(studentProfilesTable.id, session.studentId));
+
+    // Build the student's individual skill map from the placement result so the
+    // dashboard / skill tree have a personalized starting point. Non-fatal: a
+    // failure here must not block placement completion.
+    try {
+      skillsMapped = await seedSkillMasteryFromPlacement(
+        session.studentId,
+        theta,
+        breakdown,
+        diagnosedGrade,
+      );
+    } catch (err) {
+      logger.warn({ err, sessionId }, "Failed to seed skill mastery from placement");
+    }
   }
 
   const [updated] = await db
@@ -237,7 +341,9 @@ router.post("/placement/:sessionId/answer", async (req, res) => {
     correct,
     correctOptionId,
     newTheta: theta,
+    thetaSe: se,
     newSe: se,
+    skillsMapped,
   });
 });
 
@@ -258,7 +364,23 @@ router.get("/placement/:sessionId/result", async (req, res) => {
     .limit(1))[0];
   if (!owner || owner.id !== session.studentId) return res.status(403).json({ error: "Forbidden" });
 
-  return res.json(session);
+  const answers = (session.answers as any[]) ?? [];
+  const domainBreakdown = computeDomainBreakdown(answers as PlacementAnswerRecord[]);
+  const pathway = session.placementPathway ?? "developing";
+  const gradeLevel = session.diagnosedGradeLevel ?? "grade";
+  const recommendedNextSteps =
+    session.status === "completed" ? recommendNextSteps(domainBreakdown, pathway, gradeLevel) : [];
+  const skillsMapped =
+    session.status === "completed" ? await countMappedSkills(session.studentId) : 0;
+
+  return res.json({
+    ...session,
+    sessionId: session.id,
+    thetaFinal: session.theta,
+    domainBreakdown,
+    recommendedNextSteps,
+    skillsMapped,
+  });
 });
 
 export default router;

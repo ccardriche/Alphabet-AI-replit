@@ -1902,7 +1902,7 @@ components:
           type: ["string", "null"]
         activityType:
           type: string
-          enum: [listen_repeat, see_tap, say_it, write_it, read_it, multiple_choice]
+          enum: [listen_repeat, see_tap, say_it, write_it, read_it, multiple_choice, vocabulary, fill_blank]
         options:
           type: array
           items:
@@ -1944,6 +1944,8 @@ components:
       properties:
         correct:
           type: boolean
+        correctOptionId:
+          type: string
         newTheta:
           type: number
         thetaSe:
@@ -1976,6 +1978,35 @@ components:
           type: array
           items:
             type: string
+        domainBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlacementDomainScore"
+        recommendedNextSteps:
+          type: array
+          items:
+            type: string
+        skillsMapped:
+          type: integer
+          description: Number of skills mapped into the student's individual learning path from this placement.
+
+    PlacementDomainScore:
+      type: object
+      required: [domainCode, domain, questionsAnswered, correct, accuracyPct, level]
+      properties:
+        domainCode:
+          type: string
+        domain:
+          type: string
+        questionsAnswered:
+          type: integer
+        correct:
+          type: integer
+        accuracyPct:
+          type: number
+        level:
+          type: string
+          enum: [strength, on_track, gap, not_assessed]
 
     # ── PRACTICE ──────────────────────────────────────────────────────────────
     PracticeSessionInput:

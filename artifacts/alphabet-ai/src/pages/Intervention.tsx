@@ -20,6 +20,7 @@ import {
   ChevronRight,
   RefreshCcw,
   PartyPopper,
+  PenTool,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,10 +55,8 @@ function ScoreSparkline({ scores, color }: { scores: number[]; color: string }) 
     <div className="w-16 h-8">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data}>
-          <Line type="monotone" dataKey="v" stroke={color} strokeWidth={2} dot={false} />
-          <Tooltip
-            contentStyle={{ display: "none" }}
-          />
+          <Line type="stepAfter" dataKey="v" stroke={color} strokeWidth={2.5} dot={{ r: 2, fill: "var(--color-card)", stroke: color, strokeWidth: 1.5 }} />
+          <Tooltip contentStyle={{ display: "none" }} />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -95,26 +94,26 @@ function QuestionCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border p-6">
-      <div className="flex items-center justify-between mb-4">
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+    <div className="hud-card rounded-2xl p-6 md:p-8">
+      <div className="flex items-center justify-between mb-6">
+        <span className="px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-primary/20 text-primary border border-primary/30">
           {phaseLabel}
         </span>
-        <span className="text-xs text-muted-foreground">{progressLabel}</span>
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{progressLabel}</span>
       </div>
 
-      <h2 className="text-base font-semibold leading-snug mb-5">{q.questionText}</h2>
+      <h2 className="text-lg md:text-xl font-bold leading-relaxed mb-6 text-foreground">{q.questionText}</h2>
 
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         {q.options.map((opt) => {
           const isSelected = selected === opt.id;
           const isCorrectOpt = opt.id === q.correctOptionId;
-          let cls = "border-gray-200 hover:border-indigo-300";
+          let cls = "border-border hover:border-primary/50 hover:bg-muted/50";
           if (questionPhase === "feedback") {
-            if (isCorrectOpt) cls = "border-green-400 bg-green-50 text-green-800";
-            else if (isSelected) cls = "border-red-400 bg-red-50 text-red-800";
+            if (isCorrectOpt) cls = "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+            else if (isSelected) cls = "border-destructive bg-destructive/10 text-destructive";
           } else if (isSelected) {
-            cls = "border-indigo-500 bg-indigo-50 text-indigo-800";
+            cls = "border-primary bg-primary/10 text-foreground shadow-[0_0_15px_rgba(139,92,246,0.15)]";
           }
           return (
             <button
@@ -122,7 +121,7 @@ function QuestionCard({
               onClick={() => questionPhase === "active" && setSelected(opt.id)}
               disabled={questionPhase === "feedback"}
               className={cn(
-                "w-full text-left px-4 py-3 rounded-xl border text-sm font-medium transition-all",
+                "w-full text-left px-5 py-4 rounded-xl border-2 text-sm font-bold transition-all bouncy-hover",
                 cls,
               )}
             >
@@ -133,13 +132,15 @@ function QuestionCard({
       </div>
 
       {questionPhase === "feedback" && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
-          <div className={cn("flex items-start gap-2 p-3 rounded-lg text-sm mb-3", isCorrect ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
-            {isCorrect ? <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 shrink-0 mt-0.5" />}
-            <span>{q.explanation}</span>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
+          <div className={cn("flex items-start gap-3 p-4 rounded-xl text-sm font-medium mb-6 border-2", 
+            isCorrect ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" : "bg-destructive/10 text-destructive border-destructive/30"
+          )}>
+            {isCorrect ? <CheckCircle className="w-5 h-5 shrink-0" /> : <XCircle className="w-5 h-5 shrink-0" />}
+            <span className="leading-relaxed">{q.explanation}</span>
           </div>
-          <Button onClick={handleNext} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-            Continue
+          <Button onClick={handleNext} className="w-full h-14 game-gradient text-white font-black uppercase tracking-widest rounded-xl bouncy-hover border-b-[4px] border-black/20 shadow-xl">
+            CONTINUE MISSION <ChevronRight className="w-5 h-5 ml-1" />
           </Button>
         </motion.div>
       )}
@@ -148,9 +149,9 @@ function QuestionCard({
         <Button
           onClick={handleSubmit}
           disabled={!selected}
-          className="w-full mt-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+          className="w-full mt-6 h-14 bg-foreground text-background font-black uppercase tracking-widest rounded-xl bouncy-hover border-b-[4px] border-foreground/50 shadow-lg"
         >
-          Check Answer
+          VERIFY ANSWER
         </Button>
       )}
     </div>
@@ -232,19 +233,19 @@ function ReteachSession({
   // ── Loading state ──────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="space-y-4 py-6 text-center">
-        <div className="w-12 h-12 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-muted-foreground">Generating your personalized micro-lesson…</p>
+      <div className="space-y-4 py-12 text-center flex flex-col items-center">
+        <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+        <p className="text-[10px] font-black text-primary uppercase tracking-widest animate-pulse">GENERATING TACTICAL PROTOCOL...</p>
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div className="py-8 text-center">
-        <AlertTriangle className="w-8 h-8 mx-auto mb-3 text-red-400" />
-        <p className="text-sm text-muted-foreground mb-4">Failed to generate lesson. Please try again.</p>
-        <Button onClick={handleStartLesson} variant="outline">Retry</Button>
+      <div className="py-12 text-center hud-card rounded-3xl">
+        <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-destructive" />
+        <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-6">Failed to initialize protocol.</p>
+        <Button onClick={handleStartLesson} variant="outline" className="font-black uppercase tracking-widest border-2 bouncy-hover h-12 px-8">RETRY INITIALIZATION</Button>
       </div>
     );
   }
@@ -252,33 +253,40 @@ function ReteachSession({
   // ── Not yet started ────────────────────────────────────────────────────────
   if (!lesson) {
     return (
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm border p-6 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
-            <BookOpen className="w-7 h-7 text-indigo-600" />
-          </div>
-          <h2 className="text-xl font-bold mb-2">Micro-Lesson: {skill.skillName}</h2>
-          <p className="text-sm text-muted-foreground mb-1">3 activities • ~5 minutes</p>
-          <div className="flex justify-center gap-6 mt-4 mb-6">
-            {[
-              { label: "Explain", icon: "📖" },
-              { label: "Practice", icon: "✏️" },
-              { label: "Check", icon: "✅" },
-            ].map(({ label, icon }) => (
-              <div key={label} className="text-center">
-                <div className="text-2xl mb-1">{icon}</div>
-                <p className="text-xs text-muted-foreground">{label}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-sm text-muted-foreground mb-6">
-            We'll try a different approach to help this skill click. Score 2/3 to clear the reteaching flag.
-          </p>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
-            <Button onClick={handleStartLesson} className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white gap-2" data-testid="btn-start-reteach">
-              <Sparkles className="w-4 h-4" /> Start Lesson
-            </Button>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="hud-card rounded-3xl p-8 md:p-12 text-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-primary/5 pattern-grid-lg opacity-20 pointer-events-none" />
+          <div className="relative z-10">
+            <div className="w-20 h-20 rounded-3xl game-gradient flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/20">
+              <BookOpen className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="text-2xl md:text-3xl font-heading font-black uppercase text-foreground mb-2">Tactical Review</h2>
+            <p className="text-sm font-bold text-primary uppercase tracking-widest mb-8">{skill.skillName}</p>
+            
+            <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-8 mt-4 mb-8">
+              {[
+                { label: "ANALYZE", icon: BookOpen },
+                { label: "EXECUTE", icon: PenTool },
+                { label: "VERIFY", icon: CheckCircle },
+              ].map(({ label, icon: Icon }) => (
+                <div key={label} className="text-center bg-card border-2 border-border rounded-xl p-4 shadow-sm flex flex-col items-center">
+                  <Icon className="w-6 h-6 text-foreground mb-2" />
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{label}</p>
+                </div>
+              ))}
+            </div>
+            
+            <p className="text-xs font-medium text-muted-foreground mb-8 max-w-sm mx-auto leading-relaxed">
+              Target lock required. Complete 3 phases with 2/3 accuracy to clear intervention flag.
+            </p>
+            <div className="flex flex-col-reverse sm:flex-row gap-4">
+              <Button variant="outline" onClick={onClose} className="w-full sm:w-auto h-14 font-black uppercase tracking-widest text-xs border-2 border-border gap-2 bouncy-hover">
+                ABORT
+              </Button>
+              <Button onClick={handleStartLesson} className="flex-1 h-14 game-gradient text-white font-black uppercase tracking-widest text-sm rounded-xl bouncy-hover border-b-[4px] border-black/20 shadow-xl" data-testid="btn-start-reteach">
+                <Sparkles className="w-5 h-5 mr-2 fill-white" /> INITIATE PROTOCOL
+              </Button>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -289,21 +297,23 @@ function ReteachSession({
   const phaseIndex = { explain: 0, guided1: 1, guided2: 1, check: 2, complete: 3 }[phase];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       {phase !== "complete" && (
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1.5 flex-1">
-            {["Explain", "Practice", "Check"].map((label, i) => (
+        <div className="flex items-center gap-4 bg-card border-2 border-border p-3 rounded-2xl shadow-sm">
+          <div className="flex gap-2 flex-1">
+            {["Analyze", "Execute", "Verify"].map((label, i) => (
               <div
                 key={label}
                 className={cn(
-                  "h-1.5 rounded-full flex-1 transition-colors",
-                  i < phaseIndex ? "bg-indigo-600" : i === phaseIndex ? "bg-indigo-400" : "bg-gray-200",
+                  "h-2 rounded-full flex-1 transition-all duration-500",
+                  i < phaseIndex ? "bg-primary" : i === phaseIndex ? "game-gradient shadow-[0_0_10px_rgba(139,92,246,0.5)]" : "bg-muted",
                 )}
               />
             ))}
           </div>
-          <span className="text-xs text-muted-foreground">{["Explain", "Practice", "Practice", "Check", "Done"][phaseIndex]}</span>
+          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest w-16 text-right">
+            {["PHASE 1", "PHASE 2", "PHASE 2", "PHASE 3", "DONE"][phaseIndex]}
+          </span>
         </div>
       )}
 
@@ -311,21 +321,23 @@ function ReteachSession({
         {/* ── Explain phase ── */}
         {phase === "explain" && (
           <motion.div key="explain" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-            <div className="bg-white rounded-2xl shadow-sm border p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Concept</span>
-                <span className="text-xs text-muted-foreground">{lesson.skillName}</span>
+            <div className="hud-card rounded-3xl p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <span className="px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-500 border border-blue-500/30">
+                  TACTICAL BRIEFING
+                </span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{lesson.skillName}</span>
               </div>
-              <h2 className="text-base font-semibold mb-3">Let's try a new approach</h2>
-              <div className="bg-indigo-50 rounded-xl p-4 text-sm text-indigo-900 leading-relaxed border border-indigo-100 mb-5">
+              <h2 className="text-xl md:text-2xl font-heading font-black uppercase tracking-tight mb-4 text-foreground">Alternate Perspective</h2>
+              <div className="bg-muted border-2 border-border rounded-2xl p-6 text-sm md:text-base text-foreground leading-relaxed font-medium mb-8 shadow-inner">
                 {lesson.explanation}
               </div>
               <Button
                 onClick={() => setPhase("guided1")}
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white gap-2"
+                className="w-full h-14 game-gradient text-white font-black uppercase tracking-widest rounded-xl bouncy-hover border-b-[4px] border-black/20 shadow-xl"
                 data-testid="btn-reteach-continue-explain"
               >
-                Got it! Let's Practice <ChevronRight className="w-4 h-4" />
+                PROCEED TO EXECUTION <ChevronRight className="w-5 h-5 ml-1" />
               </Button>
             </div>
           </motion.div>
@@ -336,8 +348,8 @@ function ReteachSession({
           <motion.div key="guided1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
             <QuestionCard
               q={lesson.guidedQuestions[0]}
-              phaseLabel="Guided Practice"
-              progressLabel="Question 1 of 2"
+              phaseLabel="GUIDED EXECUTION"
+              progressLabel="TARGET 1 OF 2"
               onCorrect={handleGuided1Correct}
               onIncorrect={handleGuided1Incorrect}
             />
@@ -349,8 +361,8 @@ function ReteachSession({
           <motion.div key="guided2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
             <QuestionCard
               q={lesson.guidedQuestions[1]}
-              phaseLabel="Guided Practice"
-              progressLabel="Question 2 of 2"
+              phaseLabel="GUIDED EXECUTION"
+              progressLabel="TARGET 2 OF 2"
               onCorrect={handleGuided2Correct}
               onIncorrect={handleGuided2Incorrect}
             />
@@ -362,8 +374,8 @@ function ReteachSession({
           <motion.div key="check" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
             <QuestionCard
               q={lesson.checkQuestion}
-              phaseLabel="Check for Understanding"
-              progressLabel="Final check"
+              phaseLabel="VERIFICATION SCAN"
+              progressLabel="FINAL TARGET"
               onCorrect={handleCheckCorrect}
               onIncorrect={handleCheckIncorrect}
             />
@@ -373,28 +385,43 @@ function ReteachSession({
         {/* ── Complete ── */}
         {phase === "complete" && (
           <motion.div key="complete" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
-            <div className="bg-white rounded-2xl shadow-sm border p-8 text-center">
-              <div className={cn("w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5", passed ? "bg-green-100" : "bg-amber-100")}>
-                {passed ? <Trophy className="w-8 h-8 text-green-500" /> : <RefreshCcw className="w-8 h-8 text-amber-500" />}
-              </div>
-              <h2 className="text-xl font-bold mb-2">{passed ? "Great Job!" : "Keep Going!"}</h2>
-              <p className="text-sm text-muted-foreground mb-1">
-                Score: {correctCount}/3
-              </p>
-              <p className="text-sm text-muted-foreground mb-4">
-                {passed
-                  ? `You've shown improvement on "${skill.skillName}". The reteaching flag has been cleared!`
-                  : `Keep practicing "${skill.skillName}" — you're making progress!`}
-              </p>
-              {completeError && (
-                <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 text-left">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>Could not save your progress. Please check your connection and try again.</span>
+            <div className="hud-card rounded-3xl p-8 md:p-12 text-center relative overflow-hidden">
+               <div className={cn("absolute inset-0 pattern-grid-lg opacity-20 pointer-events-none", passed ? "bg-emerald-500/5" : "bg-amber-500/5")} />
+              
+               <div className="relative z-10">
+                <div className={cn("w-20 h-20 rounded-3xl border-2 flex items-center justify-center mx-auto mb-6 shadow-inner", 
+                  passed ? "bg-emerald-500/20 border-emerald-500/30" : "bg-amber-500/20 border-amber-500/30"
+                )}>
+                  {passed ? <Trophy className="w-10 h-10 text-emerald-500" /> : <RefreshCcw className="w-10 h-10 text-amber-500" />}
                 </div>
-              )}
-              <Button onClick={onClose} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-                Back to Intervention List
-              </Button>
+                
+                <h2 className="text-3xl font-heading font-black uppercase tracking-tight mb-2 text-foreground">
+                  {passed ? "PROTOCOL SECURED" : "PROTOCOL INCOMPLETE"}
+                </h2>
+                
+                <p className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded border inline-block mb-6 bg-muted">
+                  SCORE: <span className={passed ? "text-emerald-500" : "text-amber-500"}>{correctCount}/3</span>
+                </p>
+                
+                <p className="text-sm font-medium text-muted-foreground mb-8 max-w-sm mx-auto">
+                  {passed
+                    ? `You've demonstrated sufficient proficiency in "${skill.skillName}". Flag cleared.`
+                    : `Additional reinforcement required for "${skill.skillName}". Continue operations.`}
+                </p>
+                
+                {completeError && (
+                  <div className="flex items-center gap-3 p-4 mb-6 rounded-xl bg-destructive/10 border-2 border-destructive/30 text-xs font-black uppercase tracking-widest text-destructive text-left">
+                    <AlertTriangle className="w-5 h-5 shrink-0" />
+                    <span>Communication failure. System unable to log results.</span>
+                  </div>
+                )}
+                
+                <Button onClick={onClose} className={cn("w-full h-14 font-black uppercase tracking-widest rounded-xl bouncy-hover border-b-[4px] text-white shadow-xl",
+                  passed ? "bg-emerald-500 hover:bg-emerald-600 border-emerald-700" : "game-gradient border-black/20"
+                )}>
+                  {passed ? "RETURN TO MISSION HUB" : "ACKNOWLEDGE & RETURN"}
+                </Button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -416,8 +443,14 @@ export default function Intervention() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="p-6 space-y-4">
-          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
+        <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto flex flex-col h-full min-h-[calc(100vh-4rem)]">
+           <div className="mb-8">
+            <Skeleton className="h-10 w-64 rounded-xl bg-muted/50 mb-2" />
+            <Skeleton className="h-4 w-48 rounded-md bg-muted/50" />
+          </div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-40 rounded-3xl bg-muted/50" />)}
+          </div>
         </div>
       </Layout>
     );
@@ -427,13 +460,13 @@ export default function Intervention() {
   if (activeSkill) {
     return (
       <Layout>
-        <div className="p-6 max-w-lg mx-auto">
+        <div className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto flex flex-col h-full min-h-[calc(100vh-4rem)]">
           <button
             onClick={() => setActiveSkill(null)}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-5 transition-colors"
+            className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-foreground mb-8 transition-colors bg-card border-2 border-border px-4 py-2 rounded-lg self-start bouncy-hover"
             data-testid="btn-reteach-back"
           >
-            ← Intervention List
+            <ChevronRight className="w-4 h-4 rotate-180" /> ABORT PROTOCOL
           </button>
           <ReteachSession
             skill={activeSkill}
@@ -452,25 +485,25 @@ export default function Intervention() {
   if (!groups || groups.length === 0 || totalFlagged === 0) {
     return (
       <Layout>
-        <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center mx-auto mb-5">
-              <PartyPopper className="w-10 h-10 text-green-500" />
+        <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-center">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="hud-card rounded-3xl p-12 md:p-16 max-w-2xl w-full">
+            <div className="w-24 h-24 rounded-3xl bg-emerald-500/20 border-2 border-emerald-500/30 flex items-center justify-center mx-auto mb-8 shadow-inner">
+              <CheckCircle className="w-12 h-12 text-emerald-500" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">You're All Caught Up! 🎉</h2>
-            <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-6">
-              No skills are currently flagged for reteaching. Keep up the great work!
+            <h2 className="text-3xl md:text-4xl font-heading font-black uppercase tracking-tight mb-4 text-foreground">ALL SYSTEMS NOMINAL</h2>
+            <p className="text-sm font-medium text-muted-foreground max-w-sm mx-auto mb-10 leading-relaxed">
+              No directives currently require tactical review. Operations proceeding optimally.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 onClick={() => setLocation("/practice")}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white gap-2"
+                className="h-14 game-gradient text-white font-black uppercase tracking-widest text-sm px-8 rounded-xl bouncy-hover border-b-[4px] border-black/20 shadow-xl"
                 data-testid="btn-try-new-skill"
               >
-                <Sparkles className="w-4 h-4" /> Try Something New
+                <Sparkles className="w-4 h-4 mr-2 fill-white" /> NEW DIRECTIVE
               </Button>
-              <Button variant="outline" onClick={() => setLocation("/skill-tree")}>
-                View Skill Tree
+              <Button variant="outline" onClick={() => setLocation("/skill-tree")} className="h-14 font-black uppercase tracking-widest text-sm px-8 rounded-xl bouncy-hover border-2 border-border">
+                VIEW SECTOR MAP
               </Button>
             </div>
           </motion.div>
@@ -482,15 +515,15 @@ export default function Intervention() {
   // Main intervention list
   return (
     <Layout>
-      <div className="p-6 max-w-3xl mx-auto">
-        <div className="mb-5">
-          <h1 className="text-2xl font-bold mb-1">Intervention</h1>
-          <p className="text-sm text-muted-foreground">
-            {totalFlagged} skill{totalFlagged !== 1 ? "s" : ""} need{totalFlagged === 1 ? "s" : ""} reteaching. Complete each micro-lesson to clear the flag.
+      <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto flex flex-col h-full min-h-[calc(100vh-4rem)] pb-24">
+        <div className="mb-8 md:mb-10">
+          <h1 className="text-3xl md:text-4xl font-heading font-black uppercase tracking-tight text-foreground mb-1">Tactical Review</h1>
+          <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
+            {totalFlagged} target{totalFlagged !== 1 ? "s" : ""} flagged. Execute micro-lessons to resolve discrepancies.
           </p>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-8 md:space-y-10">
           {groups.map((group, gi) => {
             const domainColor = DOMAIN_COLORS[group.domain] ?? "#6366f1";
             const domainLabel = DOMAIN_LABELS[group.domain] ?? group.domain;
@@ -502,51 +535,52 @@ export default function Intervention() {
                 transition={{ delay: gi * 0.07 }}
               >
                 {/* Domain header */}
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: domainColor }} />
-                  <h2 className="text-sm font-semibold">{domainLabel}</h2>
-                  <span className="text-xs text-muted-foreground">({group.skills.length})</span>
+                <div className="flex items-center gap-3 mb-4 bg-card border-2 border-border p-3 rounded-xl shadow-sm inline-flex">
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center text-white" style={{ backgroundColor: domainColor }}>
+                     <span className="text-[10px] font-black uppercase">{group.domain}</span>
+                  </div>
+                  <h2 className="text-xs font-black uppercase tracking-widest text-foreground pr-2">{domainLabel} <span className="text-muted-foreground ml-1">[{group.skills.length}]</span></h2>
                 </div>
 
-                <div className="space-y-3">
+                <div className="grid md:grid-cols-2 gap-4">
                   {group.skills.map((skill) => (
                     <div
                       key={skill.skillCode}
-                      className="bg-white rounded-2xl border shadow-sm p-4"
+                      className="hud-card rounded-2xl border-2 border-border hover:border-primary/50 transition-colors p-5 flex flex-col h-full group"
                     >
-                      <div className="flex items-center gap-3">
-                        <SmartScoreRing score={skill.smartScore} size={44} strokeWidth={4} />
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className="bg-card rounded-full p-1 shadow-sm border border-border shrink-0">
+                          <SmartScoreRing score={skill.smartScore} size={56} strokeWidth={5} />
+                        </div>
 
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate">{skill.skillName}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
-                              <AlertTriangle className="w-3 h-3" />
-                              {skill.consecutiveErrors} consecutive error{skill.consecutiveErrors !== 1 ? "s" : ""}
-                            </span>
+                        <div className="flex-1 min-w-0 pr-4">
+                          <p className="text-base font-bold text-foreground leading-tight mb-2">{skill.skillName}</p>
+                          <div className="flex items-center gap-2">
+                             <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border/50">{skill.skillCode}</span>
+                             <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-destructive bg-destructive/10 border border-destructive/20 px-2 py-0.5 rounded">
+                                <AlertTriangle className="w-3 h-3" />
+                                {skill.consecutiveErrors} FAULTS
+                             </span>
                           </div>
                         </div>
-
-                        {/* Sparkline trend */}
-                        <div className="shrink-0">
-                          <ScoreSparkline scores={skill.recentScores} color={domainColor} />
-                        </div>
                       </div>
+                      
+                      <div className="flex items-end justify-between mt-auto pt-4 border-t border-border/50">
+                         <div className="flex-1 mr-4">
+                           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 leading-relaxed">
+                             {skill.consecutiveErrors >= 3 ? "PERSISTENT DISCREPANCY. ALTERNATE PROTOCOL RECOMMENDED." : "RECENT ANOMALIES DETECTED. QUICK REVIEW SUGGESTED."}
+                           </p>
+                           <ScoreSparkline scores={skill.recentScores} color={domainColor} />
+                         </div>
 
-                      {/* Error pattern hint */}
-                      <div className="mt-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-100 text-xs text-amber-800">
-                        Common pattern: {skill.consecutiveErrors >= 3
-                          ? "Repeated errors suggest a conceptual gap — a different explanation may help."
-                          : "Recent errors detected — a quick review should get you back on track."}
+                        <Button
+                          onClick={() => setActiveSkill(skill)}
+                          className="h-12 bg-foreground text-background font-black uppercase tracking-widest text-xs rounded-xl bouncy-hover border-b-[4px] border-foreground/50 shadow-lg shrink-0 px-6"
+                          data-testid={`btn-start-reteach-${skill.skillCode}`}
+                        >
+                          INITIATE
+                        </Button>
                       </div>
-
-                      <Button
-                        onClick={() => setActiveSkill(skill)}
-                        className="w-full mt-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white gap-2"
-                        data-testid={`btn-start-reteach-${skill.skillCode}`}
-                      >
-                        <BookOpen className="w-4 h-4" /> Start Reteaching
-                      </Button>
                     </div>
                   ))}
                 </div>

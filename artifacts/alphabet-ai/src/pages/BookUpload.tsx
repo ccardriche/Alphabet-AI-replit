@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { GRADE_OPTIONS, DOMAIN_LABELS } from "@/lib/constants";
+import { apiUrl } from "@/lib/api-url";
 import Layout from "@/components/Layout";
 
 const schema = z.object({
@@ -111,7 +112,7 @@ export default function BookUpload() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/llm/parse-pdf", {
+      const res = await fetch(apiUrl("/api/llm/parse-pdf"), {
         method: "POST",
         body: formData,
         credentials: "include",

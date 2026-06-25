@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { apiUrl } from "@/lib/api-url";
 
 function simpleHash(str: string): string {
   let hash = 0;
@@ -49,7 +50,7 @@ export function useTTS(text: string) {
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) return cached;
 
-    const res = await fetch("/api/tts", {
+    const res = await fetch(apiUrl("/api/tts"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),

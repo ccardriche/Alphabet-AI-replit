@@ -30,6 +30,29 @@ export function setBaseUrl(url: string | null): void {
 }
 
 /**
+ * Return the currently configured base URL (without a trailing slash), or
+ * `null` when requests are made same-origin against relative paths.
+ *
+ * Hand-written `fetch("/api/...")` calls that live outside the generated
+ * client should prepend this so they agree with the generated hooks on a
+ * single base.
+ */
+export function getBaseUrl(): string | null {
+  return _baseUrl;
+}
+
+/**
+ * Resolve a (possibly relative) request path against the configured base URL.
+ * Absolute URLs are returned unchanged; relative paths get the base prepended
+ * when one is set, otherwise they are returned as-is (same-origin).
+ */
+export function resolveApiUrl(path: string): string {
+  if (!_baseUrl) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${_baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+/**
  * Register a getter that supplies a bearer auth token.  Before every fetch
  * the getter is invoked; when it returns a non-null string, an
  * `Authorization: Bearer <token>` header is attached to the request.

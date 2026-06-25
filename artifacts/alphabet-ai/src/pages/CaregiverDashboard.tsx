@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { DOMAIN_COLORS, MASTERY_LABELS } from "@/lib/constants";
 import SmartScoreRing from "@/components/SmartScoreRing";
+import AdminViewBar from "@/components/AdminViewBar";
+import { getRole } from "@/lib/role";
 
 const PATHWAY_LABELS: Record<string, string> = {
   foundation:  "Foundation",
@@ -118,14 +120,17 @@ export default function CaregiverDashboard() {
     );
   }
 
-  // No profile yet → redirect to onboarding
-  if (!profile) {
+  // No profile yet → redirect to onboarding. Admins previewing the parent view
+  // have no caregiver profile, so let them through to the "no student" state.
+  const isAdmin = getRole() === "admin";
+  if (!profile && !isAdmin) {
     setLocation("/caregiver-onboarding");
     return null;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <AdminViewBar />
       {/* Header */}
       <div className="bg-gradient-to-r from-rose-600 to-purple-600 text-white px-4 py-4 sm:px-6">
         <div className="max-w-3xl mx-auto flex items-center justify-between">

@@ -69,6 +69,8 @@ export * from './mobileTokenExchangeRequest';
 export * from './mobileTokenExchangeSuccess';
 export * from './placementAnswer';
 export * from './placementAnswerResult';
+export * from './placementDomainScore';
+export * from './placementDomainScoreLevel';
 export * from './placementResult';
 export * from './placementResultPlacementPathway';
 export * from './placementSession';
