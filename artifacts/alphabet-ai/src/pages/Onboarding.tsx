@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useCreateStudentProfile } from "@workspace/api-client-react";
-import { GraduationCap, ChevronRight, ChevronLeft, Check, Users, Sparkles, BookOpen } from "lucide-react";
+import { GraduationCap, ChevronRight, ChevronLeft, Check, Users, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { GRADE_OPTIONS, INTEREST_OPTIONS, STUDENT_ID_KEY, DISPLAY_NAME_KEY } from "@/lib/constants";
 import { apiUrl } from "@/lib/api-url";
 import { useToast } from "@/hooks/use-toast";
+import OnboardingIllustration, { type OnboardingIllustrationVariant } from "@/components/OnboardingIllustration";
 
 const schema = z.object({
   displayName: z.string().min(1, "Name is required"),
@@ -25,6 +26,13 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 const STEPS = ["IDENTIFICATION", "DIRECTIVES", "ORIGINS", "NETWORK LINK"];
+
+const STEP_ILLUSTRATIONS: OnboardingIllustrationVariant[] = [
+  "welcome",
+  "reading",
+  "coaching",
+  "achievement",
+];
 
 export default function Onboarding() {
   const [step, setStep] = useState(0);
@@ -154,6 +162,19 @@ export default function Onboarding() {
         </div>
 
         <div className="hud-card rounded-3xl p-6 md:p-10 relative overflow-hidden">
+          <div className="grid gap-6 lg:grid-cols-2 lg:gap-10 lg:items-center">
+            {/* Kid-friendly visual for the current step (stacks on top on mobile) */}
+            <div className="order-first">
+              <AnimatePresence mode="wait">
+                <OnboardingIllustration
+                  key={STEP_ILLUSTRATIONS[step]}
+                  variant={STEP_ILLUSTRATIONS[step]}
+                  className="mx-auto max-w-[18rem] lg:max-w-none"
+                />
+              </AnimatePresence>
+            </div>
+
+            <div>
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -345,6 +366,8 @@ export default function Onboarding() {
               )}
             </motion.div>
           </AnimatePresence>
+            </div>
+          </div>
 
           <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 mt-12 pt-6 border-t border-border/50">
             <Button 

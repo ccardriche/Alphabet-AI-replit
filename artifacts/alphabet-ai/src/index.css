@@ -241,6 +241,24 @@
   .bouncy-hover {
     @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/20 active:translate-y-0.5 active:shadow-sm;
   }
+
+  .onboard-float {
+    animation: onboard-float 3.5s ease-in-out infinite;
+  }
+
+  .onboard-float-slow {
+    animation: onboard-float 5s ease-in-out infinite;
+  }
+}
+
+@keyframes onboard-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
