@@ -232,7 +232,7 @@ export default function Landing() {
               </Button>
               <Button
                 className="game-gradient text-white font-black uppercase tracking-widest text-xs h-11 px-5 rounded-xl bouncy-hover border-b-4 border-black/20 gap-1.5"
-                onClick={() => login()}
+                onClick={() => login("signup")}
                 data-testid="btn-get-started-nav"
               >
                 Get Started <ArrowRight className="w-4 h-4" />
@@ -295,7 +295,7 @@ export default function Landing() {
                   <Button
                     size="lg"
                     className="game-gradient text-white font-black text-base uppercase tracking-widest h-16 px-10 rounded-2xl bouncy-hover border-b-4 border-black/20 gap-2 w-full sm:w-auto"
-                    onClick={() => login()}
+                    onClick={() => login("signup")}
                     data-testid="btn-login"
                   >
                     <LogIn className="w-5 h-5" /> Start Free
@@ -524,7 +524,7 @@ export default function Landing() {
                 <Button
                   size="lg"
                   className="bg-white text-primary hover:bg-white/90 font-black text-base uppercase tracking-widest h-16 px-10 rounded-2xl bouncy-hover border-b-4 border-black/10 gap-2"
-                  onClick={() => login()}
+                  onClick={() => login("signup")}
                   data-testid="btn-login-cta"
                 >
                   <LogIn className="w-5 h-5" /> Start Free

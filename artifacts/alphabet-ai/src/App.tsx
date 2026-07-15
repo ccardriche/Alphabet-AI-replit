@@ -11,6 +11,8 @@ import { SelectedClassProvider } from "@/contexts/SelectedClassContext";
 
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Landing = lazy(() => import("@/pages/Landing"));
+const SignUp = lazy(() => import("@/pages/SignUp"));
+const SignIn = lazy(() => import("@/pages/SignIn"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const Placement = lazy(() => import("@/pages/Placement"));
 const StudentDashboard = lazy(() => import("@/pages/StudentDashboard"));
@@ -73,6 +75,8 @@ function Router() {
     <Suspense fallback={<PageSkeleton />}>
       <Switch>
         <Route path="/" component={Landing} />
+        <Route path="/signup/*?" component={SignUp} />
+        <Route path="/signin/*?" component={SignIn} />
         <Route path="/onboarding">
           <AuthGuard>
             <ErrorBoundary>

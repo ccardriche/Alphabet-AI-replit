@@ -25,6 +25,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { DOMAIN_COLORS } from "@/lib/constants";
 import Layout from "@/components/Layout";
+import { KeyRound } from "lucide-react";
+import { apiUrl } from "@/lib/api-url";
+import { useState } from "react";
 
 const MASTERY_COLORS: Record<string, string> = {
   mastered:    "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -74,6 +77,32 @@ function StatusBadge({ status }: { status: string }) {
 export default function StudentProgressDetail() {
   const params = useParams<{ studentId: string }>();
   const studentId = params.studentId ?? "";
+  const [resetting, setResetting] = useState(false);
+
+  async function handleResetPassword() {
+    const pw = window.prompt("Enter a new password for this student (at least 8 characters):");
+    if (!pw) return;
+    if (pw.length < 8) {
+      window.alert("Password must be at least 8 characters.");
+      return;
+    }
+    setResetting(true);
+    try {
+      const res = await fetch(apiUrl(`/api/teacher/students/${studentId}/reset-password`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ newPassword: pw }),
+      });
+      if (res.ok) window.alert("Password reset. Share the new password with the student.");
+      else {
+        const e = await res.json().catch(() => ({}));
+        window.alert(e.error || "Could not reset password.");
+      }
+    } finally {
+      setResetting(false);
+    }
+  }
   const [, setLocation] = useLocation();
 
   const { data, isLoading, isError } = useGetTeacherStudentProgress(studentId, {
@@ -164,6 +193,15 @@ export default function StudentProgressDetail() {
             <p className="text-2xl font-bold text-indigo-600">{Math.round(s.avgSmartScore ?? 0)}</p>
             <p className="text-xs text-muted-foreground">Avg SmartScore</p>
           </div>
+          <button
+            onClick={handleResetPassword}
+            disabled={resetting}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            data-testid="btn-reset-password"
+            title="Reset this student's password"
+          >
+            <KeyRound className="w-4 h-4" /> {resetting ? "Resetting…" : "Reset password"}
+          </button>
         </div>
 
         {/* Stats row */}

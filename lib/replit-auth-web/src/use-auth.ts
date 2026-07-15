@@ -9,7 +9,7 @@ interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: () => void;
+  login: (mode?: "signin" | "signup") => void;
   logout: () => void;
 }
 
@@ -51,13 +51,10 @@ export function useAuth(): AuthState {
     };
   }, [isLoaded, isSignedIn]);
 
-  const login = useCallback(() => {
-    const returnTo = window.location.pathname + window.location.search;
-    clerk.redirectToSignIn({
-      signInForceRedirectUrl: returnTo,
-      signUpForceRedirectUrl: returnTo,
-    });
-  }, [clerk]);
+  const login = useCallback((mode: "signin" | "signup" = "signin") => {
+    // Route to the app's own email-free username login pages.
+    window.location.href = mode === "signup" ? "/signup" : "/signin";
+  }, []);
 
   const logout = useCallback(() => {
     void clerk.signOut({ redirectUrl: "/" });

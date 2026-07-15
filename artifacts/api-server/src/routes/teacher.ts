@@ -10,9 +10,31 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, inArray, sql, gte, or, lt, isNotNull, desc } from "drizzle-orm";
 import crypto from "crypto";
+import { clerkClient } from "@clerk/express";
 import { requireTeacher } from "../middlewares/requireTeacher";
 
 const router = Router();
+
+// Reset a student's password (email-free accounts have no self-service recovery).
+router.post("/teacher/students/:studentId/reset-password", requireTeacher, async (req, res) => {
+  const { studentId } = req.params;
+  const newPassword = String((req.body ?? {}).newPassword ?? "");
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters." });
+  }
+  const [student] = await db
+    .select()
+    .from(studentProfilesTable)
+    .where(eq(studentProfilesTable.id, studentId as string))
+    .limit(1);
+  if (!student) return res.status(404).json({ error: "Student not found." });
+  try {
+    await clerkClient.users.updateUser(student.userId, { password: newPassword });
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(400).json({ error: err?.errors?.[0]?.message || "Could not reset password." });
+  }
+});
 
 async function getTeacherStudentIds(teacherId: string): Promise<string[]> {
   const classes = await db.select({ id: teacherClassesTable.id })
